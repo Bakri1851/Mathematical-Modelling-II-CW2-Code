@@ -1,6 +1,11 @@
 # Mathematical Modelling 2 — CW2: Traffic Flow
 
-Stochastic cellular automaton model for single-lane one-way traffic flow, with and without equidistant traffic lights.
+Two cellular automaton models for traffic flow, compared side-by-side:
+
+| Model | File | Type | Key phenomenon |
+|---|---|---|---|
+| **Nagel-Schreckenberg (NaSch)** | `notebooks/nagel_schreckenberg.ipynb` | 1-D stochastic | Stop-and-go waves; smooth fundamental diagram |
+| **Biham-Middleton-Levine (BML)** | `notebooks/biham_middleton_levine.ipynb` | 2-D deterministic | Sharp phase transition; gridlock |
 
 ---
 
@@ -52,7 +57,7 @@ Two coordination strategies are compared:
 
 ## Notebook Structure
 
-### `notebooks/traffic_flow_analysis.ipynb`
+### `notebooks/nagel_schreckenberg.ipynb`
 
 | Section | Description |
 |---------|-------------|
@@ -66,9 +71,9 @@ Two coordination strategies are compared:
 | **8. Optimisation Heatmap** | 2D sweep of $(N, T_\text{cycle})$ → optimal configuration identified |
 | **9. Summary** | Comparative plots and key findings |
 
-### `notebooks/sensitivity.ipynb`
+### `notebooks/nagel_sensitivity.ipynb`
 
-Systematic parameter sensitivity study:
+Systematic parameter sensitivity study for the NaSch model:
 
 | Section | Description |
 |---------|-------------|
@@ -78,6 +83,62 @@ Systematic parameter sensitivity study:
 | **5. Maximum velocity** | Higher v_max raises capacity but lights impose a hard ceiling |
 | **6. 2D heatmap** | Joint sweep of (N, T_cycle) for both sync and offset modes |
 | **7. Summary comparison** | Flow vs p_in for no-lights, optimal sync, and optimal offset configurations |
+
+### `notebooks/biham_middleton_levine.ipynb`
+
+| Section | Description |
+|---------|-------------|
+| **1. Imports & Parameters** | Global constants (`L`, warmup/measurement lengths) |
+| **2. BML CA** | `BML` class — 2-D periodic grid, vectorised simultaneous update |
+| **3. Fundamental Diagram** | Flow vs density: reveals sharp phase transition at $\rho_c$ |
+| **4. Phase Transition Analysis** | Order parameter vs $\rho$ for multiple $L$; susceptibility peak locates $\rho_c$ |
+| **5. Grid Snapshots** | Colour-coded grid at free-flow, critical, and gridlock densities |
+| **6. Space-Time Diagrams** | Row occupancy over time: free flow, intermittent jams, frozen gridlock |
+| **7. Car Type Ratio** | Effect of horizontal/vertical imbalance on flow near $\rho_c$ |
+| **8. System Size Effects** | Fundamental diagram for $L \in \{32, 64, 128, 256\}$ — finite-size scaling |
+| **9. Summary** | Overlay plots and bar chart of key regimes |
+
+---
+
+## Biham–Middleton–Levine (BML) Model
+
+The BML model places two types of cars on a periodic $L \times L$ grid:
+- **Horizontal cars** move one cell right each even sub-step.
+- **Vertical cars** move one cell up each odd sub-step.
+
+All moves in a sub-step are evaluated simultaneously on the current state and applied at once.
+There is no stochastic element.
+
+### Key parameters
+
+| Parameter | Default | Meaning |
+|-----------|---------|---------|
+| `L` | 100 | Grid size ($L \times L$ cells) |
+| `r_horiz` | 0.5 | Fraction of cars that are horizontal |
+| `T_WARMUP` | 500 | Transient steps discarded |
+| `T_MEASURE` | 200 | Steps averaged for flow |
+
+### Phase transition
+
+Unlike NaSch, BML exhibits a **sharp (discontinuous) phase transition** at a critical density
+$\rho_c \approx 0.32$ (for $L = 100$):
+
+- **Below $\rho_c$**: free flow — nearly all cars can move every step.
+- **Near $\rho_c$**: self-organised diagonal stripe patterns; partial flow.
+- **Above $\rho_c$**: permanent **gridlock** — an absorbing state that cannot be escaped.
+
+The transition sharpens with $L$ (finite-size effect) and converges toward a step function as
+$L \to \infty$.
+
+### Contrast with NaSch
+
+| Property | NaSch | BML |
+|---|---|---|
+| Dimension | 1-D | 2-D |
+| Stochastic? | Yes ($p_\text{rand} = 0.3$) | No |
+| Fundamental diagram | Smooth hump | Sharp drop |
+| Congestion type | Backward-propagating stop-and-go waves | Irreversible total gridlock |
+| Key parameter | $p_\text{rand}$, $v_\text{max}$ | $\rho$, grid size $L$ |
 
 ---
 
@@ -158,17 +219,22 @@ Five scenarios at fixed $p_\text{in}$ plotted as side-by-side bars: no lights, w
 ## How to Run
 
 1. Open a terminal in the project root.
-2. Install dependencies if needed:
+2. Install dependencies:
    ```bash
-   pip install numpy matplotlib jupyter
+   pip install -r requirements.txt
    ```
-3. Launch the notebook:
+3. Launch the desired notebook:
    ```bash
-   jupyter notebook notebooks/traffic_flow_analysis.ipynb
+   jupyter notebook notebooks/nagel_schreckenberg.ipynb       # NaSch model + traffic lights
+   jupyter notebook notebooks/nagel_sensitivity.ipynb         # NaSch sensitivity analysis
+   jupyter notebook notebooks/biham_middleton_levine.ipynb    # BML model
    ```
 4. Run all cells top-to-bottom (**Kernel → Restart & Run All**).
 
-Typical runtime: ~3–5 minutes for all parameter sweeps (most expensive: Section 8 heatmap). Run `sensitivity.ipynb` separately for the full sensitivity study.
+Typical runtimes (all parameter sweeps):
+- `nagel_schreckenberg.ipynb` — ~3–5 min (most expensive: Section 8 heatmap)
+- `nagel_sensitivity.ipynb` — ~5–8 min
+- `biham_middleton_levine.ipynb` — ~5–10 min (most expensive: Section 8, L=256 sweep)
 
 ---
 
@@ -191,3 +257,4 @@ All key parameters are defined as constants at the top of Section 1:
 - [17] M. Rickert, K. Nagel, M. Schreckenberg, A. Latour. *Two lane traffic simulations using cellular automata.* Physica A, 231:534–550, 1996.
 - [18] M. Schreckenberg, A. Schadschneider, K. Nagel, N. Ito. *Discrete stochastic-models for traffic flow.* Phys. Rev. E, 51:2939–2949, 1995.
 - [6] D. Helbing. *Traffic and related self-driven many-particle systems.* Rev. Mod. Phys., 73:1067–1141, 2001.
+- O. Biham, A. A. Middleton, D. Levine. *Self-organization and a dynamical transition in traffic-flow models.* Phys. Rev. A, 46:R6124–R6127, 1992.
