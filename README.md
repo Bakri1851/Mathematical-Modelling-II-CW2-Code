@@ -6,6 +6,7 @@ Two cellular automaton models for traffic flow, compared side-by-side:
 |---|---|---|---|
 | **Nagel-Schreckenberg (NaSch)** | `notebooks/nagel_schreckenberg.ipynb` | 1-D stochastic | Stop-and-go waves; smooth fundamental diagram |
 | **Biham-Middleton-Levine (BML)** | `notebooks/biham_middleton_levine.ipynb` | 2-D deterministic | Sharp phase transition; gridlock |
+| **Stochastic BML** | `notebooks/stochastic_bml.ipynb` | 2-D stochastic | Softened transition; NaSch dawdling in 2-D |
 
 ---
 
@@ -96,6 +97,24 @@ Systematic parameter sensitivity study for the NaSch model:
 | **6. Space-Time Diagrams** | Row occupancy over time: free flow, intermittent jams, frozen gridlock |
 | **7. Traffic Lights** | `BMLWithLights` — signalised intersection grid; FD comparison, cycle sweep, snapshots |
 | **8. Summary** | Fundamental diagram + bar chart of key regimes |
+
+### `notebooks/stochastic_bml.ipynb`
+
+Extends the deterministic BML model with a NaSch-style **randomisation step**: each car
+that could move is frozen with probability $p_{\text{rand}}$ before movement is applied.
+$p_{\text{rand}} = 0$ recovers the deterministic BML exactly.
+
+| Section | Description |
+|---------|-------------|
+| **1. Imports & Parameters** | Global constants including `P_RAND = 0.3` |
+| **2. Model** | `StochasticBML` class — inherits `BML`, overrides movement methods |
+| **3. Fundamental Diagram** | Flow vs density for $p_{\text{rand}} \in \{0, 0.1, 0.3, 0.5\}$ overlaid |
+| **4. Phase Transition Analysis** | Susceptibility peaks for each $p_{\text{rand}}$; shift of $\rho_c$ |
+| **5. Grid Snapshots** | Side-by-side $p=0$ vs $p=0.3$ at free-flow, critical, and gridlock densities |
+| **6. Space-Time Diagrams** | Row occupancy: stochastic case can escape near-gridlock states |
+| **7. Effect of $p_{\text{rand}}$** | Flow vs $p_{\text{rand}}$ at fixed densities — cost in free-flow, benefit near gridlock |
+| **8. Traffic Lights** | `StochasticBMLWithLights` — combined light blocking + dawdling; four-scenario comparison |
+| **9. Summary** | Fundamental diagram overlay + peak flow and $\rho_c$ table |
 
 ### `notebooks/biham_sensitivity.ipynb`
 
@@ -242,6 +261,7 @@ Five scenarios at fixed $p_\text{in}$ plotted as side-by-side bars: no lights, w
    jupyter notebook notebooks/nagel_schreckenberg.ipynb       # NaSch model + traffic lights
    jupyter notebook notebooks/nagel_sensitivity.ipynb         # NaSch sensitivity analysis
    jupyter notebook notebooks/biham_middleton_levine.ipynb    # BML model
+   jupyter notebook notebooks/stochastic_bml.ipynb            # Stochastic BML (NaSch + BML)
    ```
 4. Run all cells top-to-bottom (**Kernel → Restart & Run All**).
 
@@ -249,6 +269,7 @@ Typical runtimes (all parameter sweeps):
 - `nagel_schreckenberg.ipynb` — ~3–5 min (most expensive: Section 8 heatmap)
 - `nagel_sensitivity.ipynb` — ~5–8 min
 - `biham_middleton_levine.ipynb` — ~5–10 min (most expensive: Section 8, L=256 sweep)
+- `stochastic_bml.ipynb` — ~8–12 min (most expensive: Sections 4 and 7, L=128 sweeps across p_rand values)
 
 ---
 
