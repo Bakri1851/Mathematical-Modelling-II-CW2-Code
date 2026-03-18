@@ -132,9 +132,9 @@ combining light blocking and stochastic dawdling in a single model.
 
 | Notebook | Animations |
 |---------|------------|
-| **`bml_animation.ipynb`** | Three density regimes side by side · Density sweep (watch the transition freeze) · Space–time diagram building up row by row |
+| **`bml_animation.ipynb`** | Three density regimes side by side · Density sweep (watch the transition freeze) · Space–time diagram building up row by row · **Traffic lights live grid** (queue-and-release at intersections) |
 | **`nasch_animation.ipynb`** | Free flow vs congestion · Stop-and-go waves on a periodic road · Traffic lights with synchronised vs offset (green wave) coordination |
-| **`stochastic_bml_animation.ipynb`** | Three density regimes with $p_{\text{rand}}=0.3$ · $p_{\text{rand}}$ sweep at critical density (watch stripes dissolve) · Deterministic vs stochastic space-time comparison |
+| **`stochastic_bml_animation.ipynb`** | Three density regimes with $p_{\text{rand}}=0.3$ · $p_{\text{rand}}$ sweep at critical density (watch stripes dissolve) · Deterministic vs stochastic space-time comparison · **Traffic lights + dawdling** (combined effect) |
 
 ---
 
