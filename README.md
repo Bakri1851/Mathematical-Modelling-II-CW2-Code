@@ -30,7 +30,7 @@ At each timestep, **four rules are applied simultaneously** to every car:
 | 3 | **Randomisation** | With probability $p$: $v_i \leftarrow \max(v_i - 1,\; 0)$ |
 | 4 | **Movement** | $x_i \leftarrow x_i + v_i$ |
 
-The randomisation step (dawdling) introduces stochasticity and is responsible for the spontaneous formation of **stop-and-go waves** — backward-propagating congestion bands observed in real traffic.
+The randomisation step (dawdling) introduces stochasticity and is responsible for the spontaneous formation of **stop-and-go waves** — backward-propagating congestion bands observed in real traffic. With $p_\text{rand} = 0.3$, each car has a 30% chance of decelerating by 1 cell/step on any given timestep, even when the road ahead is clear. This mimics driver inattentiveness and is sufficient to nucleate phantom traffic jams at higher densities.
 
 **Boundary conditions (open):** Cars enter cell 0 with probability $p_\text{in}$ and exit at cell $L$. Through-flow is measured as the count of cars leaving per timestep.
 
@@ -66,22 +66,92 @@ Two coordination strategies are compared:
 | **8. Optimisation Heatmap** | 2D sweep of $(N, T_\text{cycle})$ → optimal configuration identified |
 | **9. Summary** | Comparative plots and key findings |
 
+### `notebooks/sensitivity.ipynb`
+
+Systematic parameter sensitivity study:
+
+| Section | Description |
+|---------|-------------|
+| **2. Number of lights N** | Monotonic flow decrease as N increases — each light is a bottleneck |
+| **3. Cycle length T_cycle** | Flow peaks at an intermediate T_cycle; too short or too long both hurt |
+| **4. Green fraction** | Optimal duty cycle near 50%; asymmetric splits reduce flow |
+| **5. Maximum velocity** | Higher v_max raises capacity but lights impose a hard ceiling |
+| **6. 2D heatmap** | Joint sweep of (N, T_cycle) for both sync and offset modes |
+| **7. Summary comparison** | Flow vs p_in for no-lights, optimal sync, and optimal offset configurations |
+
+---
+
+## How to Read the Plots
+
+### Fundamental Diagram — Flow $J$ vs Density $\rho$ (Section 4)
+
+The x-axis is the car density $\rho \in [0, 1]$ (fraction of cells occupied); the y-axis is the average flow $J$ (cars passing a fixed point per timestep).
+
+- **Low density (free flow)**: Few cars, little interaction. Flow rises roughly linearly — adding more cars directly adds more throughput.
+- **Critical density**: Flow reaches its maximum. The road is optimally loaded.
+- **High density (congestion)**: Cars are too close together and must constantly brake. Flow falls back toward zero.
+
+This hump shape is the hallmark of the NaSch model. Higher $v_\text{max}$ lifts the peak because faster-moving cars can carry more flow before the road saturates. The slope changes sharply at the critical density — a phase transition between free-flow and congested regimes.
+
+### Flow vs Inflow Probability (Section 5)
+
+The x-axis is the injection probability $p_\text{in}$ (0 = no cars ever enter, 1 = a car always tries to enter); the y-axis is the measured through-flow.
+
+- **Low $p_\text{in}$**: The road is sparsely populated. Every car that enters eventually exits, so through-flow grows linearly with $p_\text{in}$.
+- **High $p_\text{in}$**: The road reaches its capacity ceiling and through-flow saturates at a plateau regardless of how many more cars try to enter. Cars pile up near the entrance instead.
+- Higher $v_\text{max}$ raises the saturation level because faster cars clear the road more quickly.
+
+### Space-Time Diagrams (Section 6)
+
+Each panel is a 200 × 500 pixel image: **rows = time** (top = $t = 0$, bottom = later), **columns = road position** (left = cell 0, right = cell $L-1$). A **black pixel** means the cell is occupied; **white** means empty.
+
+#### Panel 1 — Free Flow ($p_\text{in} = 0.1$)
+
+Sparse diagonal tracks slanting down to the right. Each continuous track is one car moving rightward at nearly constant speed (one cell per column shifts right per row). The tracks are widely spaced, reflecting low density. Cars rarely interact, and the occasional gap in a track is a single dawdling step.
+
+#### Panel 2 — Congested ($p_\text{in} = 0.8$)
+
+A dense, almost fully black image crossed by faint bands tilting to the **upper-right** (equivalently, propagating to the **left** over time). These are **stop-and-go waves**: clusters of cars forced to brake and re-accelerate, moving upstream through the traffic even though individual cars move downstream.
+
+Crucially, there is no physical bottleneck — the waves arise entirely from the stochastic dawdling rule. One car randomly slows; the car behind must brake; that car's follower brakes further; the disturbance grows into a travelling jam. This is a hallmark of real motorway congestion.
+
+#### Panel 3 — With 2 Traffic Lights ($p_\text{in} = 0.6$)
+
+Two vertical **red dashed lines** mark the light positions (approximately cells 167 and 333). Several features are visible:
+
+- **Dense vertical smears at the light positions**: Cars queue up during the red phase, producing a thick column of black pixels.
+- **Regular gaps in those columns**: Each gap is a green phase — the queue discharges and the column temporarily clears.
+- **Diagonal tracks between light positions**: Cars that cleared one light travel freely until the next, appearing as the familiar diagonal stripes from the free-flow panel.
+- **Asymmetric queue lengths**: If the two lights are offset (green-wave mode), the queues at the two positions are shifted in time — one is building while the other is discharging — so the black smears do not align horizontally.
+
+### Sensitivity Line Plots (sensitivity.ipynb, Sections 2–5)
+
+Each plot holds all parameters fixed except one, which is swept along the x-axis; the y-axis is through-flow. The curves show where flow peaks and how steeply it falls away from the optimum. Two curves (synchronised vs offset) are overlaid in sections that compare coordination modes.
+
+### 2D Heatmap (sensitivity.ipynb, Section 6)
+
+A grid of colour-coded cells: x-axis = $T_\text{cycle}$, y-axis = $N$. Warmer colours (yellow/red) mean higher through-flow; cooler colours (purple/blue) mean lower flow. The **red star** marks the parameter combination that achieved the highest flow. Two side-by-side heatmaps compare synchronised and offset coordination; comparing them directly shows where the green-wave strategy gains the most.
+
+### Summary Bar Chart (sensitivity.ipynb, Section 7)
+
+Five scenarios at fixed $p_\text{in}$ plotted as side-by-side bars: no lights, worst-case lights, optimal synchronised, and optimal offset. The bar heights make the cost of traffic lights and the benefit of green-wave coordination immediately legible.
+
 ---
 
 ## Key Results
 
-1. **Fundamental diagram**: Flow peaks at intermediate density and matches the classic NaSch hump. Higher $v_\text{max}$ raises the capacity (peak flow).
+1. **Fundamental diagram**: Flow peaks at intermediate density and matches the classic NaSch hump. Higher $v_\text{max}$ raises the capacity (peak flow) because faster cars clear gaps more quickly, allowing more cars to be on the road productively.
 
-2. **Open boundary**: Through-flow saturates once inflow exceeds road capacity. Saturation level increases with $v_\text{max}$.
+2. **Open boundary**: Through-flow saturates once inflow exceeds road capacity. Beyond the saturation point, extra cars entering only lengthen the queue — they do not increase throughput.
 
-3. **Stop-and-go waves**: Visible in space-time diagrams as backward-propagating diagonal bands under congested conditions.
+3. **Stop-and-go waves**: Visible in space-time diagrams as backward-propagating diagonal bands under congested conditions. They arise from a cascade: one driver randomly dawdles → the car behind must brake harder → its follower brakes further → a jam nucleates and propagates upstream even as individual cars move forward.
 
-4. **Traffic lights** always reduce maximum through-flow relative to no lights, but the reduction is minimised by:
-   - Choosing $T_\text{cycle}$ that matches car travel time between lights
-   - Using offset (green wave) coordination
-   - Not using too many lights for the road length
+4. **Traffic lights always reduce maximum through-flow** relative to no lights, because every red phase is a mandatory halt that limits how many cars can cross a given point per unit time. The reduction is minimised by:
+   - Choosing $T_\text{cycle}$ that matches car travel time between lights: too short → cars spend a disproportionate fraction of time stopped; too long → large queues build during red and take many green steps to drain.
+   - Using **offset (green wave)** coordination: cars arrive at the next light precisely when it turns green, so they pass without stopping. Synchronised lights, by contrast, create a wall of red that stops every car in the platoon simultaneously.
+   - Keeping $N$ small: each additional light is an independent bottleneck, and their effects compound.
 
-5. **Optimal configuration** (for default parameters): found via heatmap sweep of $(N, T_\text{cycle})$ — marked with a star in Section 8.
+5. **Optimal configuration** (for default parameters): found via heatmap sweep of $(N, T_\text{cycle})$ — marked with a star in Section 6 of `sensitivity.ipynb`. The offset mode consistently outperforms synchronised mode at moderate inflow.
 
 ---
 
@@ -98,7 +168,7 @@ Two coordination strategies are compared:
    ```
 4. Run all cells top-to-bottom (**Kernel → Restart & Run All**).
 
-Typical runtime: ~3–5 minutes for all parameter sweeps (most expensive: Section 8 heatmap).
+Typical runtime: ~3–5 minutes for all parameter sweeps (most expensive: Section 8 heatmap). Run `sensitivity.ipynb` separately for the full sensitivity study.
 
 ---
 
@@ -109,10 +179,10 @@ All key parameters are defined as constants at the top of Section 1:
 | Parameter | Default | Meaning |
 |-----------|---------|---------|
 | `L` | 500 | Road length (cells) |
-| `V_MAX` | 5 | Default maximum velocity |
-| `P_RAND` | 0.3 | Dawdling probability |
-| `T_WARMUP` | 500 | Discard steps before measurement |
-| `T_MEASURE` | 1000 | Steps averaged for flow |
+| `V_MAX` | 5 | Default maximum velocity (cells/step) |
+| `P_RAND` | 0.3 | Dawdling probability — 30% chance of random deceleration per car per step |
+| `T_WARMUP` | 500 | Transient steps discarded before measurement; ensures the road has reached statistical steady state |
+| `T_MEASURE` | 1000 | Steps averaged for flow — longer gives lower variance |
 
 ---
 
