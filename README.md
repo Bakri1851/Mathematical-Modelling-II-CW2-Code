@@ -94,9 +94,23 @@ Systematic parameter sensitivity study for the NaSch model:
 | **4. Phase Transition Analysis** | Order parameter vs $\rho$ for multiple $L$; susceptibility peak locates $\rho_c$ |
 | **5. Grid Snapshots** | Colour-coded grid at free-flow, critical, and gridlock densities |
 | **6. Space-Time Diagrams** | Row occupancy over time: free flow, intermittent jams, frozen gridlock |
-| **7. Car Type Ratio** | Effect of horizontal/vertical imbalance on flow near $\rho_c$ |
-| **8. System Size Effects** | Fundamental diagram for $L \in \{32, 64, 128, 256\}$ — finite-size scaling |
-| **9. Summary** | Overlay plots and bar chart of key regimes |
+| **7. Traffic Lights** | `BMLWithLights` — signalised intersection grid; FD comparison, cycle sweep, snapshots |
+| **8. Summary** | Fundamental diagram + bar chart of key regimes |
+
+### `notebooks/biham_sensitivity.ipynb`
+
+| Section | Description |
+|---------|-------------|
+| **1. Car Type Ratio** | Effect of horizontal/vertical imbalance on flow near $\rho_c$ |
+| **2. System Size Effects** | Fundamental diagram for $L \in \{32, 64, 128, 256\}$ — finite-size scaling |
+| **3. Summary** | Side-by-side summary plots |
+
+### `notebooks/simulations/` — Watchable Animations
+
+| Notebook | Animations |
+|---------|------------|
+| **`bml_animation.ipynb`** | Three density regimes side by side · Density sweep (watch the transition freeze) · Space–time diagram building up row by row |
+| **`nasch_animation.ipynb`** | Free flow vs congestion · Stop-and-go waves on a periodic road · Traffic lights with synchronised vs offset (green wave) coordination |
 
 ---
 
