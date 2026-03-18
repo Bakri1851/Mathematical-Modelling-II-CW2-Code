@@ -100,21 +100,25 @@ Systematic parameter sensitivity study for the NaSch model:
 
 ### `notebooks/stochastic_bml.ipynb`
 
-Extends the deterministic BML model with a NaSch-style **randomisation step**: each car
-that could move is frozen with probability $p_{\text{rand}}$ before movement is applied.
-$p_{\text{rand}} = 0$ recovers the deterministic BML exactly.
+Bridges the deterministic BML and stochastic NaSch models by injecting a **NaSch-style
+dawdling step** into the 2-D BML grid. The `StochasticBML` class inherits from `BML` and
+overrides both movement methods: after checking that the target cell is empty, each car is
+independently frozen with probability $p_{\text{rand}}$ before the move is applied.
+Setting $p_{\text{rand}} = 0$ recovers the deterministic BML exactly — no code paths differ.
+`StochasticBMLWithLights` further extends this with intersection-based signal control,
+combining light blocking and stochastic dawdling in a single model.
 
 | Section | Description |
 |---------|-------------|
-| **1. Imports & Parameters** | Global constants including `P_RAND = 0.3` |
-| **2. Model** | `StochasticBML` class — inherits `BML`, overrides movement methods |
-| **3. Fundamental Diagram** | Flow vs density for $p_{\text{rand}} \in \{0, 0.1, 0.3, 0.5\}$ overlaid |
-| **4. Phase Transition Analysis** | Susceptibility peaks for each $p_{\text{rand}}$; shift of $\rho_c$ |
-| **5. Grid Snapshots** | Side-by-side $p=0$ vs $p=0.3$ at free-flow, critical, and gridlock densities |
-| **6. Space-Time Diagrams** | Row occupancy: stochastic case can escape near-gridlock states |
-| **7. Effect of $p_{\text{rand}}$** | Flow vs $p_{\text{rand}}$ at fixed densities — cost in free-flow, benefit near gridlock |
-| **8. Traffic Lights** | `StochasticBMLWithLights` — combined light blocking + dawdling; four-scenario comparison |
-| **9. Summary** | Fundamental diagram overlay + peak flow and $\rho_c$ table |
+| **1. Imports & Parameters** | Global constants: `L=100`, `T_WARMUP=500`, `T_MEASURE=200`, `P_RAND=0.3` |
+| **2. Model** | `BML` base class (self-contained copy) + `StochasticBML` subclass with dawdling rule; sanity check confirms `p_rand=0` is bit-for-bit identical to BML |
+| **3. Fundamental Diagram** | Overlaid flow-vs-density curves for $p_{\text{rand}} \in \{0, 0.1, 0.3, 0.5\}$; shows how stochasticity smooths and shifts the sharp BML drop |
+| **4. Phase Transition Analysis** | Order parameter and susceptibility $-\mathrm{d}\phi/\mathrm{d}\rho$ for each $p_{\text{rand}}$ at $L=128$; peak location gives $\rho_c(p)$; peak broadening quantifies softening |
+| **5. Grid Snapshots** | 2×3 panel: deterministic ($p=0$) vs stochastic ($p=0.3$) rows, three density columns (free-flow / critical / gridlock); self-organised stripes visible in det., smeared in stochastic |
+| **6. Space-Time Diagrams** | 2×3 row-occupancy panels; key observation: deterministic near-gridlock freezes permanently, stochastic shows intermittent gap openings — gridlock becomes probabilistic |
+| **7. Effect of $p_{\text{rand}}$** | Flow vs $p_{\text{rand}}$ at three fixed densities; free-flow cost is monotone; near-gridlock density may show non-monotone benefit as stochastic unfreezing escapes absorbing states |
+| **8. Traffic Lights** | `BMLWithLights` (verbatim copy) + `StochasticBMLWithLights`; four-scenario fundamental diagram isolates contributions of stochasticity and lights independently; grid snapshots with yellow intersection overlay |
+| **9. Summary** | Overlaid fundamental diagrams with $\rho_c$ verticals + dual-axis bar chart of peak flow and $\rho_c$ vs $p_{\text{rand}}$ |
 
 ### `notebooks/biham_sensitivity.ipynb`
 
@@ -130,6 +134,7 @@ $p_{\text{rand}} = 0$ recovers the deterministic BML exactly.
 |---------|------------|
 | **`bml_animation.ipynb`** | Three density regimes side by side · Density sweep (watch the transition freeze) · Space–time diagram building up row by row |
 | **`nasch_animation.ipynb`** | Free flow vs congestion · Stop-and-go waves on a periodic road · Traffic lights with synchronised vs offset (green wave) coordination |
+| **`stochastic_bml_animation.ipynb`** | Three density regimes with $p_{\text{rand}}=0.3$ · $p_{\text{rand}}$ sweep at critical density (watch stripes dissolve) · Deterministic vs stochastic space-time comparison |
 
 ---
 
@@ -172,6 +177,65 @@ $L \to \infty$.
 | Fundamental diagram | Smooth hump | Sharp drop |
 | Congestion type | Backward-propagating stop-and-go waves | Irreversible total gridlock |
 | Key parameter | $p_\text{rand}$, $v_\text{max}$ | $\rho$, grid size $L$ |
+
+---
+
+## Stochastic BML Model
+
+The Stochastic BML model extends the deterministic BML with a **NaSch-style dawdling rule**
+applied independently to each car during each movement phase. A car that would otherwise move
+(target cell empty) is instead frozen with probability $p_{\text{rand}}$, mimicking driver
+hesitation or reaction-time delay.
+
+### Modified movement condition
+
+Each car in each sub-step obeys:
+
+| Condition | Outcome |
+|-----------|---------|
+| Target cell occupied | Car stays (collision avoidance — same as deterministic BML) |
+| Target empty, $U_i > p_{\text{rand}}$ | Car moves (normal flow) |
+| Target empty, $U_i \leq p_{\text{rand}}$ | Car stays (stochastic dawdling) |
+
+where $U_i \sim \mathrm{Uniform}(0,1)$ is drawn independently for every car at every
+sub-step. Both horizontal and vertical phases draw fresh samples. Setting $p_{\text{rand}} = 0$
+makes the dawdling event impossible, recovering the deterministic BML exactly.
+
+### Key parameters
+
+| Parameter | Default | Meaning |
+|-----------|---------|---------|
+| `L` | 100 | Grid size ($L \times L$ cells) |
+| `r_horiz` | 0.5 | Fraction of cars that are horizontal |
+| `P_RAND` | 0.3 | Dawdling probability (matches NaSch default) |
+| `T_WARMUP` | 500 | Transient steps discarded before measurement |
+| `T_MEASURE` | 200 | Steps averaged for flow |
+| `n_lights` | 4 | Number of lights per row/column in the intersection grid |
+| `T_cycle` | 20 | Light cycle length (steps) |
+
+### Effect on the phase transition
+
+Adding $p_{\text{rand}} > 0$ changes the BML phase transition qualitatively:
+
+- **Transition broadens**: the sharp discontinuous drop at $\rho_c$ becomes a gradual decline,
+  resembling a smooth crossover rather than a first-order step.
+- **$\rho_c$ shifts downward**: random hesitation reduces effective throughput even at low
+  density, so the system reaches its capacity ceiling at a lower density.
+- **Gridlock becomes probabilistic**: above the deterministic $\rho_c$, configurations that
+  are permanent absorbing states in the deterministic model can now be partially escaped — a
+  dawdling car occasionally creates the gap another car needs to unblock a cluster.
+- **Free-flow cost**: at $\rho < \rho_c$, stochasticity always reduces flow because some cars
+  skip moves they could have made freely.
+
+### Three-way contrast
+
+| Property | NaSch | BML | Stochastic BML |
+|---|---|---|---|
+| Dimension | 1-D | 2-D | 2-D |
+| Stochastic? | Yes ($p_{\text{rand}} = 0.3$) | No | Yes ($p_{\text{rand}} > 0$) |
+| Fundamental diagram | Smooth hump | Sharp discontinuous drop | Softened drop; shifts left with $p$ |
+| Congestion type | Backward-propagating stop-and-go waves | Irreversible total gridlock | Probabilistic partial gridlock; rare unjamming events |
+| Key parameter | $p_{\text{rand}}$, $v_{\text{max}}$ | $\rho$, grid size $L$ | $p_{\text{rand}}$, $\rho$ |
 
 ---
 
@@ -226,6 +290,32 @@ Each plot holds all parameters fixed except one, which is swept along the x-axis
 
 A grid of colour-coded cells: x-axis = $T_\text{cycle}$, y-axis = $N$. Warmer colours (yellow/red) mean higher through-flow; cooler colours (purple/blue) mean lower flow. The **red star** marks the parameter combination that achieved the highest flow. Two side-by-side heatmaps compare synchronised and offset coordination; comparing them directly shows where the green-wave strategy gains the most.
 
+### Stochastic BML — Overlaid Fundamental Diagrams (stochastic_bml.ipynb, Section 3)
+
+Four curves share the same axes: the leftmost ($p=0$) is the sharp BML drop. As $p_{\text{rand}}$
+increases the curve shifts left and the drop becomes a gradual slope. Vertical dotted lines mark
+each curve's $\rho_c$ (estimated from the susceptibility peak). The separation between dotted
+lines quantifies how much dawdling shifts the critical density.
+
+### Stochastic BML — Susceptibility Peaks (stochastic_bml.ipynb, Section 4)
+
+Two panels side by side for $L = 128$. **Left**: order parameter $\phi$ vs $\rho$ — curves
+overlap at low density and diverge near the transition. **Right**: $-\mathrm{d}\phi/\mathrm{d}\rho$
+(susceptibility) — each curve has a peak whose x-position is $\rho_c$ and whose height measures
+the sharpness of the transition. A tall, narrow peak ($p=0$) indicates a near-discontinuous
+transition; a short, broad peak (large $p$) indicates a smooth crossover. Vertical dashed lines
+mark each $\rho_c$.
+
+### Stochastic BML — Flow vs $p_{\text{rand}}$ (stochastic_bml.ipynb, Section 7)
+
+Three curves at fixed densities sweep $p_{\text{rand}}$ along the x-axis. The **free-flow
+curve** ($\rho=0.10$) falls monotonically — every extra unit of dawdling directly wastes
+capacity. The **critical curve** ($\rho \approx \rho_c$) may be non-monotone: a small
+$p_{\text{rand}}$ can break proto-jam clusters before they lock in, briefly helping flow
+before the dawdling cost dominates. The **dense curve** ($\rho=0.45$) may rise initially
+as stochastic unfreezing allows escape from near-gridlock configurations that the deterministic
+model would never leave.
+
 ### Summary Bar Chart (sensitivity.ipynb, Section 7)
 
 Five scenarios at fixed $p_\text{in}$ plotted as side-by-side bars: no lights, worst-case lights, optimal synchronised, and optimal offset. The bar heights make the cost of traffic lights and the benefit of green-wave coordination immediately legible.
@@ -247,6 +337,8 @@ Five scenarios at fixed $p_\text{in}$ plotted as side-by-side bars: no lights, w
 
 5. **Optimal configuration** (for default parameters): found via heatmap sweep of $(N, T_\text{cycle})$ — marked with a star in Section 6 of `sensitivity.ipynb`. The offset mode consistently outperforms synchronised mode at moderate inflow.
 
+6. **Stochastic BML bridges NaSch and BML**: injecting NaSch-style dawdling ($p_{\text{rand}} = 0.3$) into the 2-D BML grid softens the sharp first-order-like phase transition into a gradual crossover. The critical density $\rho_c$ shifts downward with $p_{\text{rand}}$, and configurations that are permanent absorbing gridlocks in the deterministic model can be partially escaped — gridlock becomes probabilistic rather than irreversible. Free-flow throughput is always reduced by dawdling. Traffic lights compound both effects: the combined model shows approximately additive flow penalties from stochasticity and signal control.
+
 ---
 
 ## How to Run
@@ -262,6 +354,7 @@ Five scenarios at fixed $p_\text{in}$ plotted as side-by-side bars: no lights, w
    jupyter notebook notebooks/nagel_sensitivity.ipynb         # NaSch sensitivity analysis
    jupyter notebook notebooks/biham_middleton_levine.ipynb    # BML model
    jupyter notebook notebooks/stochastic_bml.ipynb            # Stochastic BML (NaSch + BML)
+   jupyter notebook notebooks/simulations/stochastic_bml_animation.ipynb  # Stochastic BML animations
    ```
 4. Run all cells top-to-bottom (**Kernel → Restart & Run All**).
 
@@ -270,6 +363,7 @@ Typical runtimes (all parameter sweeps):
 - `nagel_sensitivity.ipynb` — ~5–8 min
 - `biham_middleton_levine.ipynb` — ~5–10 min (most expensive: Section 8, L=256 sweep)
 - `stochastic_bml.ipynb` — ~8–12 min (most expensive: Sections 4 and 7, L=128 sweeps across p_rand values)
+- `stochastic_bml_animation.ipynb` — ~3–5 min (Animation 2 pre-computes 120 grids with warmup; Animations 1 and 3 are real-time)
 
 ---
 
