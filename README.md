@@ -1,12 +1,13 @@
 # Mathematical Modelling 2 — CW2: Traffic Flow
 
-Two cellular automaton models for traffic flow, compared side-by-side:
+Three cellular automaton models for traffic flow, compared side-by-side:
 
 | Model | File | Type | Key phenomenon |
 |---|---|---|---|
 | **Nagel-Schreckenberg (NaSch)** | `notebooks/nagel_schreckenberg.ipynb` | 1-D stochastic | Stop-and-go waves; smooth fundamental diagram |
 | **Biham-Middleton-Levine (BML)** | `notebooks/biham_middleton_levine.ipynb` | 2-D deterministic | Sharp phase transition; gridlock |
 | **Stochastic BML** | `notebooks/stochastic_bml.ipynb` | 2-D stochastic | Softened transition; NaSch dawdling in 2-D |
+| **Two-Intersection BML** | `notebooks/two_intersection_bml.ipynb` | Road network | Per-junction independent lights; green-wave optimisation |
 
 ---
 
@@ -120,6 +121,27 @@ combining light blocking and stochastic dawdling in a single model.
 | **8. Traffic Lights** | `BMLWithLights` (verbatim copy) + `StochasticBMLWithLights`; four-scenario fundamental diagram isolates contributions of stochasticity and lights independently; grid snapshots with yellow intersection overlay |
 | **9. Summary** | Overlaid fundamental diagrams with $\rho_c$ verticals + dual-axis bar chart of peak flow and $\rho_c$ vs $p_{\text{rand}}$ |
 
+### `notebooks/two_intersection_bml.ipynb`
+
+BML-inspired model on an explicit road network with **exactly two signalised intersections**.
+Each junction has its own independent light phase (horizontal green / vertical red, or vice
+versa), and car movement is governed by BML-style simultaneous occupancy rules applied
+locally at each junction rather than by one global alternating rule.
+
+Road layout: one horizontal road (row `L//2`) crossed by two vertical roads (columns `L//3`
+and `2*L//3`) forming two explicit intersections I₁ and I₂.  Non-road cells are masked out so
+cars exist only on road cells.
+
+| Section | Description |
+|---------|-------------|
+| **1. Imports & Parameters** | L, T_cycle, T_WARMUP, T_MEASURE |
+| **2. TwoIntersectionBML class** | Road network builder; BML-style `step()` with per-junction light checks; `h_queue_length()` helper |
+| **3. Fundamental Diagram** | Flow vs road density for synchronized vs green-wave offset lights |
+| **4. Queue Length Analysis** | Mean queue at each intersection vs density; reveals spillback at high density |
+| **5. Phase Offset Sweep** | Flow vs phase offset at critical density — locates the optimal green-wave offset |
+| **6. Space-Time Diagram** | Horizontal road occupancy over time (synchronized vs green-wave side-by-side) |
+| **7. Summary** | Overlaid FD curves + peak-flow bar chart |
+
 ### `notebooks/biham_sensitivity.ipynb`
 
 | Section | Description |
@@ -135,6 +157,7 @@ combining light blocking and stochastic dawdling in a single model.
 | **`bml_animation.ipynb`** | Three density regimes side by side · Density sweep (watch the transition freeze) · Space–time diagram building up row by row · **Traffic lights live grid** (queue-and-release at intersections) |
 | **`nasch_animation.ipynb`** | Free flow vs congestion · Stop-and-go waves on a periodic road · Traffic lights with synchronised vs offset (green wave) coordination |
 | **`stochastic_bml_animation.ipynb`** | Three density regimes with $p_{\text{rand}}=0.3$ · $p_{\text{rand}}$ sweep at critical density (watch stripes dissolve) · Deterministic vs stochastic space-time comparison · **Traffic lights + dawdling** (combined effect) |
+| **`two_intersection_bml.ipynb`** | Road network with 2 explicit junctions (non-road cells dark) · Three density regimes (free flow / congested / spillback) · **Synchronized vs green-wave** side-by-side (phase labels per junction update live) · Space–time diagram of the horizontal road with intersection columns marked |
 
 ---
 
@@ -236,6 +259,99 @@ Adding $p_{\text{rand}} > 0$ changes the BML phase transition qualitatively:
 | Fundamental diagram | Smooth hump | Sharp discontinuous drop | Softened drop; shifts left with $p$ |
 | Congestion type | Backward-propagating stop-and-go waves | Irreversible total gridlock | Probabilistic partial gridlock; rare unjamming events |
 | Key parameter | $p_{\text{rand}}$, $v_{\text{max}}$ | $\rho$, grid size $L$ | $p_{\text{rand}}$, $\rho$ |
+
+---
+
+## Two-Intersection BML Model
+
+The Two-Intersection BML model places the traffic control idea on an **explicit road
+network** rather than a uniform grid.  Only three roads exist:
+
+```
+        v_col1        v_col2
+          |              |
+──────────I₁─────────────I₂──────────   ← h_row (horizontal road, cars move →)
+          |              |
+       (vertical 1)   (vertical 2)
+        cars move ↑   cars move ↑
+```
+
+- **Horizontal road**: one full row (`h_row = L//2`), periodic — horizontal cars circulate right.
+- **Vertical roads**: two full columns (`v_col1 = L//3`, `v_col2 = 2*L//3`), periodic — vertical cars circulate up.
+- **Non-road cells** (`−1`) are inert; cars only exist on road cells.
+- **Intersection 1** at `(h_row, v_col1)`, **Intersection 2** at `(h_row, v_col2)`.
+
+### Traffic light mechanism
+
+Each intersection has a **fully independent** traffic light with its own phase counter:
+
+$$\text{phase}_i(t) = (t + \delta_i) \;\bmod\; T_{\text{cycle}}$$
+
+where $\delta_1 = 0$ for Intersection 1 and $\delta_2 = \texttt{phase\_offset}$ for
+Intersection 2.  At each step:
+
+| Condition | State at intersection $i$ |
+|---|---|
+| $\text{phase}_i < T_{\text{cycle}}/2$ | Horizontal green · Vertical red |
+| $\text{phase}_i \geq T_{\text{cycle}}/2$ | Vertical green · Horizontal red |
+
+### Movement rule (BML-style, per-junction)
+
+A full timestep consists of two sequential sub-steps:
+
+**Sub-step 1 — horizontal cars** (all evaluated on the current grid state):
+
+1. A horizontal car at column $c$ checks whether column $c+1$ is empty.
+2. If the target column is an intersection column **and** the local light is red for
+   horizontal, the car is additionally blocked (even if the cell is empty).
+3. All qualifying cars move simultaneously one cell to the right.
+
+**Sub-step 2 — vertical cars** (evaluated on the grid already updated by sub-step 1):
+
+1. A vertical car at row $r$ on column $v$ checks whether row $r-1$ is empty.
+2. If row $r-1$ is the intersection row **and** the local light at that column is red
+   for vertical, the car is additionally blocked.
+3. All qualifying cars on each vertical road move simultaneously one cell up.
+
+This differs from the global BML alternating rule: horizontal and vertical cars
+do not share a single global phase — each intersection controls only the cars
+approaching **that** intersection.  A car on vertical road 1 is never affected by
+the light state at intersection 2.
+
+### Phase offset and green-wave coordination
+
+With `phase_offset = 0` both intersections switch in **synchrony**.  With
+`phase_offset = T_cycle/2` the two lights are staggered by half a cycle: when I₁
+turns green for horizontal, I₂ turns green for vertical.
+
+The **green-wave** condition is satisfied when cars released by I₁ during its green
+phase arrive at I₂ exactly as I₂ also turns green.  For uniform car speed of one
+cell per step and inter-intersection spacing $d = v_{\text{col2}} - v_{\text{col1}}$,
+the ideal offset is:
+
+$$\delta_2^* = d \;\bmod\; T_{\text{cycle}}$$
+
+The Phase Offset Sweep (Section 5 of `two_intersection_bml.ipynb`) locates this
+empirically by measuring throughput at each candidate offset.
+
+### Key parameters
+
+| Parameter | Default | Meaning |
+|-----------|---------|---------|
+| `L` | 80 | Grid size ($L \times L$ cells) |
+| `T_cycle` | 20 | Light cycle length (steps) |
+| `phase_offset` | 0 | Phase shift of I₂ relative to I₁ (steps) |
+| `T_WARMUP` | 300 | Transient steps discarded |
+| `T_MEASURE` | 300 | Steps averaged for flow |
+
+### Three-way contrast
+
+| Property | BML (uniform grid) | Two-Intersection BML |
+|---|---|---|
+| Road structure | Full $L \times L$ grid | Explicit H + 2V roads only |
+| Intersections | $n^2$ evenly-spaced grid | Exactly 2 named intersections |
+| Light control | Global alternating rule | Per-junction independent phases |
+| Key study | Phase transition, gridlock | Queue spillback, green-wave optimisation |
 
 ---
 
