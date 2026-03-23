@@ -8,6 +8,7 @@ Three cellular automaton models for traffic flow, compared side-by-side:
 | **Biham-Middleton-Levine (BML)** | `notebooks/biham_middleton_levine.ipynb` | 2-D deterministic | Sharp phase transition; gridlock |
 | **Stochastic BML** | `notebooks/stochastic_bml.ipynb` | 2-D stochastic | Softened transition; NaSch dawdling in 2-D |
 | **Two-Intersection BML** | `notebooks/two_intersection_bml.ipynb` | Road network | Per-junction independent lights; green-wave optimisation |
+| **Grid Network BML** | `notebooks/grid_network_bml.ipynb` | N×N road network | Multi-intersection green-wave; critical density vs network size |
 
 ---
 
@@ -141,6 +142,35 @@ cars exist only on road cells.
 | **5. Phase Offset Sweep** | Flow vs phase offset at critical density — locates the optimal green-wave offset |
 | **6. Space-Time Diagram** | Horizontal road occupancy over time (synchronized vs green-wave side-by-side) |
 | **7. Summary** | Overlaid FD curves + peak-flow bar chart |
+
+### `notebooks/grid_network_bml.ipynb`
+
+Extends the Two-Intersection BML model to a fully general **N×N grid of signalised
+intersections**: N horizontal roads cross N vertical roads, creating N² independent junctions.
+Each junction has its own phase offset, enabling network-scale green-wave coordination.
+
+```
+     v_col0   v_col1   v_col2
+        |        |        |
+────────I₀₀──────I₀₁──────I₀₂──────   ← h_rows[0]
+        |        |        |
+────────I₁₀──────I₁₁──────I₁₂──────   ← h_rows[1]
+        |        |        |
+────────I₂₀──────I₂₁──────I₂₂──────   ← h_rows[2]
+        |        |        |
+```
+
+| Section | Description |
+|---------|-------------|
+| **1. Imports & Parameters** | L=80, N_ROADS=3, T_CYCLE=16, T_WARMUP=300, T_MEASURE=300 |
+| **2. GridNetworkBML class** | Road builder; BML-style `step()` with per-intersection light checks; `h_queue_length()` |
+| **3. Grid Snapshots** | Road network at free-flow / near-critical / congested density |
+| **4. Fundamental Diagram** | Flow vs density for N=2,3,4 (wave mode); shows ρ_c shift left as N grows |
+| **5. Phase Transition Analysis** | Order parameter and susceptibility −dφ/dρ for N=2,3,4; locates ρ_c(N) |
+| **6. Light Strategy Comparison** | Synchronised vs diagonal wave vs random offsets — full FD and peak-flow bar chart |
+| **7. Parameter Sweep Heatmap** | 2-D sweep of (N, T_cycle) for sync and wave modes; identifies optimal configuration |
+| **8. Space-Time Diagram** | Middle horizontal road occupancy over time; green-wave corridors visible in wave mode |
+| **9. Summary** | FD by N, ρ_c vs N plot, peak-flow bar chart by strategy |
 
 ### `notebooks/biham_sensitivity.ipynb`
 
@@ -355,6 +385,76 @@ empirically by measuring throughput at each candidate offset.
 
 ---
 
+## Grid Network BML Model
+
+The Grid Network BML model generalises the Two-Intersection BML to an **N×N grid of
+intersections**: N horizontal roads (periodic, cars move right) cross N vertical roads
+(periodic, cars move up), producing N² independent signalised junctions.
+
+Road positions are evenly spaced:
+
+$$h\_\text{rows}[i] = \left\lfloor \frac{L(i+1)}{N+1} \right\rfloor, \quad
+v\_\text{cols}[j] = \left\lfloor \frac{L(j+1)}{N+1} \right\rfloor, \quad
+i,j \in \{0,\ldots,N-1\}$$
+
+Non-road cells (value −1) are inert.  Cars are placed only on road cells; intersection cells are
+left empty at initialisation.
+
+### Traffic light mechanism
+
+Each of the N² intersections has a **fully independent** phase counter:
+
+$$\text{phase}_{ij}(t) = (t + \delta_{ij}) \;\bmod\; T_{\text{cycle}}$$
+
+| Condition | State at intersection $(i,j)$ |
+|---|---|
+| $\text{phase}_{ij} < T_{\text{cycle}}/2$ | Horizontal → green · Vertical ↑ red |
+| $\text{phase}_{ij} \geq T_{\text{cycle}}/2$ | Vertical ↑ green · Horizontal → red |
+
+### Light coordination strategies
+
+| Mode | $\delta_{ij}$ | Description |
+|---|---|---|
+| `sync` | $0$ | All lights switch in lockstep |
+| `wave` | $((i+j)\cdot s)\;\bmod\;T_{\text{cycle}}$, where $s = L/(N+1)$ | Diagonal green-wave: cars released at $(i,j)$ arrive at the next intersection on green |
+| `random` | $\sim \text{Uniform}\{0,\ldots,T_{\text{cycle}}-1\}$ | Uncoordinated baseline |
+
+### Movement rule
+
+A full timestep has two sequential sub-steps (same as Two-Intersection BML, applied at scale):
+
+1. **Horizontal phase**: for each horizontal road row $r$, all cars that can advance (next cell empty **and** local light green for horizontal at each approaching intersection column) move simultaneously.
+2. **Vertical phase**: for each vertical road column $c$, all cars that can advance (cell above empty **and** local light green for vertical) move simultaneously, seeing the grid already updated by step 1.
+
+### Key parameters
+
+| Parameter | Default | Meaning |
+|-----------|---------|---------|
+| `L` | 80 | Grid size ($L \times L$ cells) |
+| `N` | 3 | Roads per direction; N² intersections total |
+| `T_cycle` | 16 | Light cycle length (steps) |
+| `offset_mode` | `'wave'` | Coordination strategy: `'sync'`, `'wave'`, or `'random'` |
+| `T_WARMUP` | 300 | Transient steps discarded |
+| `T_MEASURE` | 300 | Steps averaged for flow |
+
+### Key findings
+
+- **ρ_c decreases with N**: each additional road adds N more intersections, each acting as a bottleneck; the system reaches gridlock at a lower overall density.
+- **Wave offsets outperform sync**: diagonal green-wave coordination reduces unnecessary stops, raising peak flow — especially near the critical density.
+- **Optimal T_cycle shrinks with N**: shorter cycles reduce per-intersection blocking time when there are many junctions; the heatmap (Section 7) identifies the optimal (N, T_cycle) pair.
+- **Random offsets perform worst**: uncoordinated phases create conflicting stop waves that compound across the network.
+
+### Comparison across road network models
+
+| Property | BML (uniform grid) | Two-Intersection BML | Grid Network BML |
+|---|---|---|---|
+| Road structure | Full $L \times L$ grid | 1H + 2V roads | N horizontal + N vertical roads |
+| Intersections | $n^2$ uniform grid | Exactly 2 named intersections | N² grid of named intersections |
+| Light control | Global alternating rule | Per-junction independent | Per-junction with coordination modes |
+| Key study | Phase transition, gridlock | Green-wave optimisation | Network-scale ρ_c(N), wave vs sync |
+
+---
+
 ## How to Read the Plots
 
 ### Fundamental Diagram — Flow $J$ vs Density $\rho$ (Section 4)
@@ -453,7 +553,9 @@ Five scenarios at fixed $p_\text{in}$ plotted as side-by-side bars: no lights, w
 
 5. **Optimal configuration** (for default parameters): found via heatmap sweep of $(N, T_\text{cycle})$ — marked with a star in Section 6 of `sensitivity.ipynb`. The offset mode consistently outperforms synchronised mode at moderate inflow.
 
-6. **Stochastic BML bridges NaSch and BML**: injecting NaSch-style dawdling ($p_{\text{rand}} = 0.3$) into the 2-D BML grid softens the sharp first-order-like phase transition into a gradual crossover. The critical density $\rho_c$ shifts downward with $p_{\text{rand}}$, and configurations that are permanent absorbing gridlocks in the deterministic model can be partially escaped — gridlock becomes probabilistic rather than irreversible. Free-flow throughput is always reduced by dawdling. Traffic lights compound both effects: the combined model shows approximately additive flow penalties from stochasticity and signal control.
+6. **Grid Network BML shows that network complexity reduces capacity**: as N increases, more intersections act as bottlenecks and the critical density ρ_c shifts downward. Diagonal green-wave coordination (offset[i,j] = ((i+j)·spacing) % T_cycle) consistently outperforms synchronised lights across all N, with the largest gain near ρ_c. The optimal cycle length decreases with N: shorter cycles reduce per-intersection blocking time when there are many junctions. Random offsets perform worst, confirming that coordination — not just staggering — is essential at network scale.
+
+7. **Stochastic BML bridges NaSch and BML**: injecting NaSch-style dawdling ($p_{\text{rand}} = 0.3$) into the 2-D BML grid softens the sharp first-order-like phase transition into a gradual crossover. The critical density $\rho_c$ shifts downward with $p_{\text{rand}}$, and configurations that are permanent absorbing gridlocks in the deterministic model can be partially escaped — gridlock becomes probabilistic rather than irreversible. Free-flow throughput is always reduced by dawdling. Traffic lights compound both effects: the combined model shows approximately additive flow penalties from stochasticity and signal control.
 
 ---
 
@@ -471,6 +573,7 @@ Five scenarios at fixed $p_\text{in}$ plotted as side-by-side bars: no lights, w
    jupyter notebook notebooks/biham_middleton_levine.ipynb    # BML model
    jupyter notebook notebooks/stochastic_bml.ipynb            # Stochastic BML (NaSch + BML)
    jupyter notebook notebooks/simulations/stochastic_bml_animation.ipynb  # Stochastic BML animations
+   jupyter notebook notebooks/grid_network_bml.ipynb          # Grid Network BML (N×N intersections)
    ```
 4. Run all cells top-to-bottom (**Kernel → Restart & Run All**).
 
@@ -480,6 +583,7 @@ Typical runtimes (all parameter sweeps):
 - `biham_middleton_levine.ipynb` — ~5–10 min (most expensive: Section 8, L=256 sweep)
 - `stochastic_bml.ipynb` — ~8–12 min (most expensive: Sections 4 and 7, L=128 sweeps across p_rand values)
 - `stochastic_bml_animation.ipynb` — ~3–5 min (Animation 2 pre-computes 120 grids with warmup; Animations 1 and 3 are real-time)
+- `grid_network_bml.ipynb` — ~10–15 min (most expensive: Sections 5 and 7, multi-seed sweeps over N and T_cycle)
 
 ---
 
