@@ -1,6 +1,6 @@
 # 25MAP211 Coursework 2 — Traffic flow with NaSch cellular automaton
 
-Coursework submission for **25MAP211 Mathematical Modelling II** (Loughborough University). This is coursework, not a research project — scope is bounded by the brief and the marking rubric. The brief is **Modelling Group 2**: a single-lane one-way road with equidistant traffic lights, optimise through-flow as a function of the number of lights, the cycle length, and the green fraction. The model family is the **Nagel–Schreckenberg stochastic cellular automaton** (single-lane NaSch plus extensions). Beyond the baseline single-lane problem, two extension directions are explored: (i) a **two-lane NaSch** with CWS symmetric lane-changing and equidistant lights spanning both lanes, and (ii) a **perpendicular intersection** of two single-lane roads sharing one crossing cell with mutually-exclusive traffic lights.
+Coursework submission for **25MAP211 Mathematical Modelling II** (Loughborough University). This is coursework, not a research project — scope is bounded by the brief and the marking rubric. The brief is **Modelling Group 2**: a single-lane one-way road with equidistant traffic lights, optimise through-flow as a function of the number of lights, the cycle length, and the green fraction. The model family is the **Nagel–Schreckenberg stochastic cellular automaton** (single-lane NaSch plus extensions). Beyond the baseline single-lane problem, two extension directions are explored: (i) a **two-lane NaSch** with CWS symmetric lane-changing and equidistant lights spanning both lanes, and (ii) a **perpendicular intersection** of two single-lane roads sharing one crossing cell with mutually-exclusive traffic lights
 
 ## Repository structure
 
@@ -80,11 +80,72 @@ On the first run of an experiment cell the helper calls `compute_fn()`, writes t
 
 ## Model description
 
-**Single-lane NaSch.** Cars live on a 1-D lattice of `L` cells; each car carries an integer velocity in `{0, …, v_max}`. One timestep applies the four-rule parallel update to every car (`nasch.py:123–133`): (1) accelerate: `v ← min(v+1, v_max)`; (2) slow for gap: `v ← min(v, gap)` where `gap` is the distance to the next obstacle (car or red light); (3) randomise: with probability `p_rand`, `v ← max(v−1, 0)`; (4) move: `x ← x + v`. Two boundary regimes are supported: **periodic** (`TrafficCA_Periodic`) for fundamental-diagram measurement at fixed car count, and **open** (`TrafficCA`) for through-flow with stochastic inflow at cell 0 (probability `p_in` per step) and outflow past cell `L−1`.
+### Single-lane NaSch
 
-**Extensions.** (i) *Two-lane* (`TwoLaneNaSch` in `nasch_two_lane.py:21–323`): a `(2, L)` grid with a CWS symmetric lane-changing sub-step (`nasch_two_lane.py:140–173`) applied before the longitudinal update. A car switches with probability `p_chg` iff all four conditions hold — incentive `gap_own < v+1`, improvement `gap_other_ahead > gap_own`, adjacent cell empty, safe rear `gap_other_behind > v_max`. Per Rickert et al. (1996) and Chowdhury–Wolf–Schreckenberg (1997). (ii) *Equidistant lights* (`TrafficCAWithLights`, `TwoLaneNaSchWithLights`): `N` lights at cells `floor(L·(i+1)/(N+1))`; each light has phase `(time + phase_offsets[i]) mod T_cycle` and is red when `phase ≥ T_green`. A red light acts as a stationary obstacle at its cell for the braking rule. `offset=True` sets phase shifts `i · T_cycle / N` for a green-wave. `TwoLaneNaSchWithLights` delegates its red-light positions to a private `TrafficCAWithLights` instance (`nasch_two_lane.py:368–370, 385–387`), so the two-lane light schedule is single-lane by construction. (iii) *Perpendicular intersection* (`IntersectionSystem` in `nasch_intersection.py:51–122`): two independent `TrafficCA` roads share one crossing cell at `L//2`. A single boolean toggles which road is green, split by `eta = T_g1/T` (`T_g1 = round(eta·T)`, `T_g2 = T − T_g1`). Mutual exclusion is structural — both roads cannot be green simultaneously.
+The road is a 1-D lattice of `L` cells. Each cell is either empty or occupied by exactly one car, and every car carries an integer velocity `v ∈ {0, 1, …, v_max}` — so cells per timestep is the natural unit of speed. The state of the simulation is `self.road`: an integer array of length `L` where `-1` encodes "empty" and any non-negative value encodes a car's current velocity (`nasch.py:40–49`).
 
-**Deliberately out of scope** (modelling choices, not oversights): no red-light violations; no multi-cell lane-change per timestep (the CWS rule is applied once per car per step); no vehicle heterogeneity (identical `v_max` and `p_rand` for every car); no learned or adaptive light controller.
+One timestep is a **parallel update** of every car using the four NaSch rules (`nasch.py:123–133`), applied in this order:
+
+1. **Accelerate** — `v ← min(v + 1, v_max)`. Drivers always want to go faster, capped at the speed limit.
+2. **Slow for the gap** — `v ← min(v, gap)`, where `gap` is the number of empty cells between this car and the next obstacle ahead (the next car or a red light). This guarantees no collisions.
+3. **Randomise (dawdling)** — with probability `p_rand`, `v ← max(v − 1, 0)`. This single stochastic kick is what generates the spontaneous stop-and-go waves that make NaSch more than a deterministic model.
+4. **Move** — `x ← x + v`.
+
+All four rules are evaluated from the *same* pre-step state and applied simultaneously, not sequentially per car. Obstacle positions are assembled once per step as the sorted union of car positions and red-light positions (`nasch.py:117–119`); gaps are computed with `np.searchsorted` against this list (`nasch_two_lane.py:246–249` uses the same idea for open boundaries).
+
+Two boundary regimes coexist:
+
+- **Open** (`TrafficCA`, `nasch.py:28–184`) — used whenever through-flow is the observable. At each step, a new car is injected into cell 0 with velocity 0 and probability `p_in`, provided cell 0 is empty (`nasch.py:155–160`). Any car whose new position `x + v ≥ L` exits the road and increments `outflow_count`. Steady-state flow is measured as `outflow_count / T_measure` (`nasch.py:170–176`).
+- **Periodic** (`TrafficCA_Periodic`, `nasch.py:237–290`) — used for fundamental-diagram measurement at fixed car count. Positions wrap modulo `L`, no inflow/outflow, and flow is computed as `J = ⟨v⟩ · ρ`, averaged over `T_measure` steps.
+
+**Traffic lights** (`TrafficCAWithLights`, `nasch.py:186–234`) extend the open-boundary model with `N` equidistant lights at cells `floor(L·(i+1)/(N+1))`. Each light `i` has its own phase counter `(time + phase_offsets[i]) mod T_cycle`; the light is green while that phase is below `T_green` and red otherwise. A red light appears in the obstacle list for that step, so Rule 2 treats it exactly like a stationary car at its cell — no new physics, just an extra obstacle. Setting `offset=True` gives consecutive lights a phase shift of `T_cycle / N`, producing a green-wave. All of this is inherited by the two-lane model via delegation (see below), so a single-lane and two-lane simulation using the same `N`, `T_cycle`, `T_green`, `offset` see an identical red/green schedule.
+
+### Two-lane NaSch
+
+State is now a `(n_lanes, L)` grid — effectively two single-lane roads stacked, with `n_lanes` restricted to `{1, 2}` by the constructor (`nasch_two_lane.py:49–53`). One timestep (`nasch_two_lane.py:280–294`) is three sub-steps executed in order:
+
+1. **Lane-change sub-step** (`_lane_change_substep`, `nasch_two_lane.py:140–173`) — skipped entirely when `n_lanes = 1` or `p_chg = 0`. For each lane, every car computes four gaps: the gap ahead in its own lane (`gap_own`), the gap ahead in the other lane (`gap_other_ahead`), the gap to the nearest car *behind* in the other lane (`gap_other_behind`), and whether the adjacent cell in the other lane is currently empty. Following the CWS symmetric rule, the car switches lanes iff **all four** conditions hold:
+   - *Incentive:* its own lane is too tight — `gap_own < v + 1`.
+   - *Improvement:* the other lane is actually better — `gap_other_ahead > gap_own`.
+   - *Adjacent cell empty:* the target cell is free right now.
+   - *Safe rear:* the car behind in the target lane is at least `v_max` cells away, so it cannot rear-end the mover on the next longitudinal step.
+   
+   If all four hold, the car switches with probability `p_chg`. The rule is applied to both lanes from the *same* pre-step snapshot (a copy of `self.road` is taken at the top of the method, so swaps in lane 0 cannot influence swaps in lane 1), preserving the parallel-update invariant.
+
+2. **Longitudinal sub-step** (per lane, inside the step loop at `nasch_two_lane.py:285–289`) — each lane runs the same four-rule NaSch update from §Single-lane NaSch. The obstacle list for a lane is the union of cars **in that lane** and **red-light cells**; lights span both lanes simultaneously (`nasch_two_lane.py:192–198` for periodic, `237–240` for open). Periodic and open boundaries use their own specialised methods (`_step_lane_periodic` and `_step_lane_open`).
+
+3. **Inflow** (`_inflow`, `nasch_two_lane.py:271–276`, open boundary only) — one candidate car per lane at cell 0, each injected independently with probability `p_in`.
+
+Two-lane lights are implemented as **delegation, not duplication**. `TwoLaneNaSchWithLights.__init__` constructs a private `TrafficCAWithLights` instance (`nasch_two_lane.py:368–370`), and `_red_light_positions()` simply syncs the oracle's clock to its own and returns the oracle's answer (`nasch_two_lane.py:385–387`). This makes it impossible for the two-lane light schedule to drift from the single-lane one — they are literally the same object.
+
+The lane-changing rule follows Rickert, Nagel, Schreckenberg & Latour (1996) for two-lane CA traffic and the symmetric CWS variant described in Chowdhury, Wolf & Schreckenberg (1997).
+
+### Perpendicular intersection
+
+`IntersectionSystem` (`nasch_intersection.py:51–122`) models two single-lane open-boundary NaSch roads that cross at a single cell `L // 2`. Road 1 runs one direction, road 2 runs perpendicular; they never share cells except at the crossing. Internally each road is a `_RoadWithExternalLight` — a thin `TrafficCA` subclass whose `_red_light_positions()` returns `[crossing_cell]` iff its externally-toggled `is_red` flag is set (`nasch_intersection.py:31–48`).
+
+One timestep (`nasch_intersection.py:101–106`) is:
+
+1. **Set the light state.** Compute `phase = time % T`. Road 1 is green while `phase < T_g1`, road 2 is green otherwise, where `T_g1 = round(eta · T)` and `T_g2 = T − T_g1`. Set `road1.is_red` and `road2.is_red` from this single boolean (`nasch_intersection.py:95–103`). **Mutual exclusion is structural** — exactly one boolean is true, so both lights can never be green simultaneously.
+2. **Advance each road independently.** Each road runs a full open-boundary NaSch step, with the crossing cell appearing in its obstacle list whenever its `is_red` flag is on. A car approaching a red crossing therefore brakes for an invisible stopped car sitting on `L // 2`, just like any other red light in this code base.
+3. **Advance the clock** (`self.time += 1`).
+
+The key knob is `eta`, the fraction of cycle time given to road 1. Throughput is measured independently for each road (`outflow_count / T` for both) and returned together with their sum (`nasch_intersection.py:114–122`):
+
+```python
+J1, J2, J_total = system.run(T_measure)
+```
+
+Under symmetric demand (`p_in_1 = p_in_2`), `J_total(η)` should be symmetric about `η = 0.5`, which is precisely the validation check run in `03_intersection_baseline.ipynb`.
+
+### Deliberately out of scope
+
+These are modelling choices bounded by the CW2 brief, not oversights:
+
+- No red-light violations — the braking rule treats a red cell as impassable.
+- No multi-cell lane-change per timestep — the CWS rule is applied once per car per step, so a car cannot traverse more than one lane in one step (two-lane only ever has one alternative anyway).
+- No vehicle heterogeneity — every car has the same `v_max` and `p_rand`.
+- No learned or adaptive light controller — all light schedules are fixed at construction time.
 
 ## Validation
 
