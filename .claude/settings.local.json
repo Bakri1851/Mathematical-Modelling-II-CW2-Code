@@ -6,7 +6,9 @@
       "Bash(python3 -c ' *)",
       "Bash(python _build_two_lane_nb.py)",
       "Bash(jupyter nbconvert *)",
-      "Bash(python -m jupyter nbconvert --to notebook --execute notebooks/nasch_two_lane.ipynb --output nasch_two_lane.ipynb --ExecutePreprocessor.timeout=600)"
+      "Bash(python -m jupyter nbconvert --to notebook --execute notebooks/nasch_two_lane.ipynb --output nasch_two_lane.ipynb --ExecutePreprocessor.timeout=600)",
+      "Bash(git fetch *)",
+      "Bash(git push *)"
     ]
   }
 }
