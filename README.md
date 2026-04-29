@@ -4,41 +4,53 @@ Coursework submission for **25MAP211 Mathematical Modelling II** (Loughborough U
 
 ## Repository structure
 
+The repo is organised by team member. Each contributor has their own top-level folder; only `Bakri/` currently contains work. `Ethan/` and `Aiden/` are placeholders for the other two members.
+
 ```
 .
-├── notebooks/
-│   ├── nasch.py                         # TrafficCA, TrafficCAWithLights, TrafficCA_Periodic, fundamental_diagram()
-│   ├── nasch_two_lane.py                # TwoLaneNaSch, TwoLaneNaSchWithLights, two_lane_fundamental_diagram()
-│   ├── nasch_intersection.py            # IntersectionSystem (perpendicular crossing, mutually-exclusive lights)
+├── Bakri/                                  # Bakri's NaSch coursework (current deliverable)
+│   ├── notebooks/
+│   │   ├── nasch.py                        # TrafficCA, TrafficCAWithLights, TrafficCA_Periodic, fundamental_diagram()
+│   │   ├── nasch_two_lane.py               # TwoLaneNaSch, TwoLaneNaSchWithLights, two_lane_fundamental_diagram()
+│   │   ├── nasch_intersection.py           # IntersectionSystem (perpendicular crossing, mutually-exclusive lights)
+│   │   │
+│   │   ├── nagel_schreckenberg.ipynb       # Archival CW1 submission, self-contained; canonical NaSch + lights + space–time diagrams
+│   │   ├── nagel_sensitivity.ipynb         # Single-lane parameter sweeps: N, T_cycle, green fraction, v_max
+│   │   ├── nasch_two_lane.ipynb            # Working notebook; contains n_lanes=1 regression check
+│   │   ├── 01_two_lane_baseline.ipynb      # Two-lane no-lights: periodic FD + open-boundary throughput
+│   │   ├── 02_two_lane_lights.ipynb        # Two-lane with N=2 lights: (phase offset φ × lane-change p_chg) sweep
+│   │   ├── 03_intersection_baseline.ipynb  # Perpendicular intersection: η sweep + asymmetric-demand heatmap
+│   │   │
+│   │   ├── simulations/                    # NaSch animation (embedded output)
+│   │   │   └── nasch_animation.ipynb
+│   │   │
+│   │   └── alternative/                    # 2-D BML-family work, outside the CW2 brief (see "Alternative models")
+│   │       ├── biham_middleton_levine.ipynb
+│   │       ├── biham_sensitivity.ipynb
+│   │       ├── stochastic_bml.ipynb
+│   │       ├── two_intersection_bml.ipynb
+│   │       ├── grid_network_bml.ipynb
+│   │       └── simulations/                # BML animation notebooks (20–35 MB each, embedded output)
+│   │           ├── bml_animation.ipynb
+│   │           └── stochastic_bml_animation.ipynb
 │   │
-│   ├── nagel_schreckenberg.ipynb        # Archival CW1 submission, self-contained; canonical NaSch + lights + space–time diagrams
-│   ├── nagel_sensitivity.ipynb          # Single-lane parameter sweeps: N, T_cycle, green fraction, v_max
-│   ├── nasch_two_lane.ipynb             # Working notebook; contains n_lanes=1 regression check
-│   ├── 01_two_lane_baseline.ipynb       # Two-lane no-lights: periodic FD + open-boundary throughput
-│   ├── 02_two_lane_lights.ipynb         # Two-lane with N=2 lights: (phase offset φ × lane-change p_chg) sweep
-│   ├── 03_intersection_baseline.ipynb   # Perpendicular intersection: η sweep + asymmetric-demand heatmap
-│   │
-│   ├── biham_middleton_levine.ipynb     # Alternative 2-D models (see "Alternative models" section)
-│   ├── biham_sensitivity.ipynb
-│   ├── stochastic_bml.ipynb
-│   ├── two_intersection_bml.ipynb
-│   ├── grid_network_bml.ipynb
-│   └── simulations/                     # Animation notebooks (20–35 MB each, embedded output)
-│       ├── bml_animation.ipynb
-│       ├── nasch_animation.ipynb
-│       ├── stochastic_bml_animation.ipynb
-│       └── two_intersection_bml.ipynb
+│   ├── data/                               # .npz caches from experiment cells
+│   ├── figures/                            # .png outputs from notebooks
+│   ├── _nasch_nb.py                        # Import shim: loads classes from nagel_schreckenberg.ipynb for test_two_lane_regression.py
+│   └── test_two_lane_regression.py         # n_lanes=1 regression check vs. archival single-lane FD
 │
-├── data/                                # .npz caches from experiment cells (empty on fresh clone; not meant to be committed)
-├── figures/                             # .png outputs from notebooks (empty until sweeps run; commit once generated)
-├── requirements.txt
-├── CLAUDE.md                            # Architecture / convention notes for the Claude Code assistant
+├── Ethan/                                  # (empty placeholder)
+├── Aiden/                                  # (empty placeholder)
+│
+├── requirements.txt                        # Shared Python dependencies
+├── .gitignore                              # __pycache__/, *.pyc, .ipynb_checkpoints/
+├── CLAUDE.md                               # Architecture / convention notes for the Claude Code assistant
 └── README.md
 ```
 
-`nagel_schreckenberg.ipynb` is the **archival CW1 submission**: it keeps its own inline copy of the single-lane classes for submission integrity and deliberately does not import from `nasch.py`. Its logic mirrors `nasch.py` bit-for-bit.
+`Bakri/notebooks/nagel_schreckenberg.ipynb` is the **archival CW1 submission**: it keeps its own inline copy of the single-lane classes for submission integrity and deliberately does not import from `nasch.py`. Its logic mirrors `nasch.py` bit-for-bit.
 
-`data/` and `figures/` both exist but are empty on this machine — the sweep cells have not been run to completion yet. There is no `.gitignore` in the repo, so `data/*.npz` will be committed by default until one is added; the intended policy is **commit figures, do not commit data caches**.
+`Bakri/data/` and `Bakri/figures/` hold cached `.npz` outputs and rendered `.png` figures from the sweep cells. The intended policy is **commit figures, do not commit data caches** — extend `.gitignore` with `Bakri/data/*.npz` if you adopt that convention.
 
 ## Running the code
 
@@ -48,7 +60,7 @@ Coursework submission for **25MAP211 Mathematical Modelling II** (Loughborough U
 ```bash
 pip install -r requirements.txt
 pip install tqdm
-jupyter notebook notebooks/<name>.ipynb
+jupyter notebook Bakri/notebooks/<name>.ipynb
 ```
 
 Run each notebook top-to-bottom (Kernel → Restart & Run All). Later cells depend on constants and imports defined in Section 1, so individual sections are not independent.
@@ -76,7 +88,7 @@ def load_or_compute(path, compute_fn, force=False):
         return {k: f[k] for k in f.files}
 ```
 
-On the first run of an experiment cell the helper calls `compute_fn()`, writes the result to a `data/*.npz` cache, and returns it. On subsequent runs it loads the cache and returns immediately. Pass `force=True` at the call site to force recomputation (e.g. after bumping `n_seeds` or `T_measure`). Sweep-heavy notebooks ship with "half-size" parameters in Section 1 for rapid iteration; the publication-quality values appear in trailing `# full: …` comments.
+On the first run of an experiment cell the helper calls `compute_fn()`, writes the result to a `Bakri/data/*.npz` cache, and returns it. On subsequent runs it loads the cache and returns immediately. Pass `force=True` at the call site to force recomputation (e.g. after bumping `n_seeds` or `T_measure`). Sweep-heavy notebooks ship with "half-size" parameters in Section 1 for rapid iteration; the publication-quality values appear in trailing `# full: …` comments.
 
 ## Model description
 
@@ -160,14 +172,14 @@ An analytical v_max=1 closed form (`J_max = (1 − √p)/2` at ρ=1/2) is **not*
 
 ## Key figures
 
-All figures below are produced by the numbered notebooks. `figures/` is empty on a fresh clone; the entries are annotated **(planned)** until the owning notebook has been run. Numbering matches what the report will use.
+All figures below are produced by the numbered notebooks. `Bakri/figures/` is empty on a fresh clone; the entries are annotated **(planned)** until the owning notebook has been run. Numbering matches what the report will use.
 
-- Figure 1 — `figures/01_fd.png`, from `01_two_lane_baseline.ipynb` **(planned)**: two-lane periodic fundamental diagram for `p_chg ∈ {0, 0.25, 0.5, 1.0}`, with the single-lane curve overlaid as a dashed reference.
-- Figure 2 — `figures/01_open.png`, from `01_two_lane_baseline.ipynb` **(planned)**: open-boundary throughput vs inflow `p_in` for `v_max ∈ {1, 2, 3, 5}` × `p_chg ∈ {0, 1}`, with the `y = p_in` line shown to quantify boundary-insertion failure.
-- Figure 3 — `figures/02_phi_sweep.png`, from `02_two_lane_lights.ipynb` **(planned)**: throughput vs phase offset φ, one curve per `p_chg`, with in-phase, anti-phase, and empirical green-wave offsets marked.
-- Figure 4 — `figures/02_heatmap.png`, from `02_two_lane_lights.ipynb` **(planned)**: 2-D heatmap of throughput over (φ, `p_chg`) at fixed `p_in = 0.4`, `N = 2`, `T_cycle = 60`.
-- Figure 5 — `figures/03_symmetric.png`, from `03_intersection_baseline.ipynb` **(planned)**: per-road and total throughput (J1, J2, J_total) vs green-time split η, with the symmetry check about η = 0.5.
-- Figure 6 — `figures/03_asym_heatmap.png`, from `03_intersection_baseline.ipynb` **(planned)**: J_total heatmap over asymmetric demand `(p_in_1, p_in_2)` at η = 0.5, with contour overlays.
+- Figure 1 — `Bakri/figures/01_fd.png`, from `01_two_lane_baseline.ipynb` **(planned)**: two-lane periodic fundamental diagram for `p_chg ∈ {0, 0.25, 0.5, 1.0}`, with the single-lane curve overlaid as a dashed reference.
+- Figure 2 — `Bakri/figures/01_open.png`, from `01_two_lane_baseline.ipynb` **(planned)**: open-boundary throughput vs inflow `p_in` for `v_max ∈ {1, 2, 3, 5}` × `p_chg ∈ {0, 1}`, with the `y = p_in` line shown to quantify boundary-insertion failure.
+- Figure 3 — `Bakri/figures/02_phi_sweep.png`, from `02_two_lane_lights.ipynb` **(planned)**: throughput vs phase offset φ, one curve per `p_chg`, with in-phase, anti-phase, and empirical green-wave offsets marked.
+- Figure 4 — `Bakri/figures/02_heatmap.png`, from `02_two_lane_lights.ipynb` **(planned)**: 2-D heatmap of throughput over (φ, `p_chg`) at fixed `p_in = 0.4`, `N = 2`, `T_cycle = 60`.
+- Figure 5 — `Bakri/figures/03_symmetric.png`, from `03_intersection_baseline.ipynb` **(planned)**: per-road and total throughput (J1, J2, J_total) vs green-time split η, with the symmetry check about η = 0.5.
+- Figure 6 — `Bakri/figures/03_asym_heatmap.png`, from `03_intersection_baseline.ipynb` **(planned)**: J_total heatmap over asymmetric demand `(p_in_1, p_in_2)` at η = 0.5, with contour overlays.
 
 ## Parameter conventions
 
@@ -193,16 +205,16 @@ Values are sourced from module defaults (`nasch.py:24–25, 40–49`; `nasch_two
 
 ## Alternative models (briefly)
 
-The repository also contains exploratory work on 2-D cellular automata that are **outside the CW2 brief** and retained for comparative context only: the deterministic Biham–Middleton–Levine model (`biham_middleton_levine.ipynb`, `biham_sensitivity.ipynb`), a stochastic variant that reintroduces NaSch-style dawdling on a 2-D grid (`stochastic_bml.ipynb`), and BML on explicit road networks with per-junction lights (`two_intersection_bml.ipynb`, `grid_network_bml.ipynb`). The notebooks in `notebooks/simulations/` are animation-only companions (20–35 MB each, with embedded output). The CW2 analysis and the figures referenced above are confined to the NaSch-family notebooks.
+The repository also contains exploratory work on 2-D cellular automata that are **outside the CW2 brief** and retained for comparative context only, all collected under `Bakri/notebooks/alternative/`: the deterministic Biham–Middleton–Levine model (`alternative/biham_middleton_levine.ipynb`, `alternative/biham_sensitivity.ipynb`), a stochastic variant that reintroduces NaSch-style dawdling on a 2-D grid (`alternative/stochastic_bml.ipynb`), and BML on explicit road networks with per-junction lights (`alternative/two_intersection_bml.ipynb`, `alternative/grid_network_bml.ipynb`). Animation-only companions live in `Bakri/notebooks/alternative/simulations/` (20–35 MB each, with embedded output); the NaSch animation lives in `Bakri/notebooks/simulations/nasch_animation.ipynb`. The CW2 analysis and the figures referenced above are confined to the NaSch-family notebooks.
 
 ## Known limitations
 
 - **Performance.** The periodic and open longitudinal updates in `nasch_two_lane.py` use per-car Python loops for gap computation. Full-resolution sweeps (`n_seeds=5`, `T_measure=10000`) take several minutes per notebook. Notebooks 01 and 02 ship with half-size parameters (`n_seeds=3`, smaller `T_measure`) and `# full: …` comments indicating the publication-quality settings.
 - **Lane count.** `TwoLaneNaSch` hard-codes `n_lanes ∈ {1, 2}` at `nasch_two_lane.py:49–53`; supporting three or more lanes would require reworking the lane-change indexing.
 - **Shared light across lanes.** Lights span both lanes simultaneously (suitable for a shared-phase junction; per-lane signals are not supported).
-- **Single crossing in `IntersectionSystem`.** One perpendicular crossing only; there is no N × M grid generalisation inside the NaSch-family modules (the BML-family `grid_network_bml.ipynb` covers that separately, but with a different physical model).
+- **Single crossing in `IntersectionSystem`.** One perpendicular crossing only; there is no N × M grid generalisation inside the NaSch-family modules (the BML-family `alternative/grid_network_bml.ipynb` covers that separately, but with a different physical model).
 - **Sensitivity to `p_rand`** has not been systematically mapped for the two-lane-with-lights configuration; a notebook 04 is planned but not present.
-- **Repo hygiene.** `requirements.txt` omits `tqdm` despite the new notebooks importing it; no `.gitignore` file exists, so `data/*.npz` caches will be committed by default until one is added.
+- **Repo hygiene.** `requirements.txt` omits `tqdm` despite the new notebooks importing it. The `.gitignore` covers `__pycache__/`, `*.pyc`, and `.ipynb_checkpoints/` only; if you want to stop committing data caches, extend it with `Bakri/data/*.npz`.
 
 ## References
 
