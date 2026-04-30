@@ -47,6 +47,8 @@ class TrafficCA:
         self.next_id = 0
         self.time   = 0
         self.outflow_count = 0  # cars that exited during measurement
+        self.entry_time   = {}  # car_id -> timestep when injected at cell 0
+        self.travel_times = []  # exit_time - entry_time for cars that finished
 
     def reset(self):
         self.road[:]    = -1
@@ -54,6 +56,8 @@ class TrafficCA:
         self.next_id    = 0
         self.time       = 0
         self.outflow_count = 0
+        self.entry_time.clear()
+        self.travel_times = []
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 
@@ -102,7 +106,7 @@ class TrafficCA:
 
     # ── Main update step ──────────────────────────────────────────────────────
 
-    def step(self, record_flow=False):
+    def step(self, record_flow=False, record_travel_times=False):
         road    = self.road
         L       = self.L
         v_max   = self.v_max
@@ -141,6 +145,15 @@ class TrafficCA:
         if record_flow:
             self.outflow_count += int(np.sum(exited))
 
+        # Drain entry-time bookkeeping for any car that just left the road,
+        # appending its travel time during measurement runs.
+        if np.any(exited):
+            exiting_ids = self.car_ids[car_pos][exited]
+            for cid in exiting_ids:
+                entered = self.entry_time.pop(int(cid), None)
+                if record_travel_times and entered is not None:
+                    self.travel_times.append(self.time - entered)
+
         staying = ~exited
         new_road[new_pos[staying]] = velocities[staying]
         new_ids[new_pos[staying]]  = self.car_ids[car_pos][staying]
@@ -157,6 +170,7 @@ class TrafficCA:
         if self.road[0] < 0 and np.random.random() < self.p_in:
             self.road[0]    = 0              # new car, velocity 0
             self.car_ids[0] = self.next_id   # assign fresh ID
+            self.entry_time[self.next_id] = self.time
             self.next_id   += 1
 
     # ── Simulation runners ────────────────────────────────────────────────────
@@ -164,15 +178,17 @@ class TrafficCA:
     def warmup(self, T=None):
         T = T or T_WARMUP
         for _ in range(T):
-            self.step(record_flow=False)
+            self.step(record_flow=False, record_travel_times=False)
         self.outflow_count = 0
+        self.travel_times = []
 
     def run(self, T=None):
         """Run T measurement steps, return mean flow (cars/timestep)."""
         T = T or T_MEASURE
         self.outflow_count = 0
+        self.travel_times = []
         for _ in range(T):
-            self.step(record_flow=True)
+            self.step(record_flow=True, record_travel_times=True)
         return self.outflow_count / T
 
     def get_snapshot(self):
@@ -182,6 +198,10 @@ class TrafficCA:
     def density(self):
         return np.sum(self.road >= 0) / self.L
 
+    def mean_travel_time(self):
+        """Mean per-car travel time (entry-to-exit) recorded during run()."""
+        return float(np.mean(self.travel_times)) if self.travel_times else float("nan")
+
 
 class TrafficCAWithLights(TrafficCA):
     """
@@ -189,14 +209,17 @@ class TrafficCAWithLights(TrafficCA):
 
     Parameters
     ----------
-    N          : number of traffic lights
-    T_cycle    : total switching cycle length (timesteps)
-    T_green    : number of green timesteps per cycle (T_red = T_cycle - T_green)
-    offset     : if True, consecutive lights are phase-shifted by T_cycle/N
+    N             : number of traffic lights
+    T_cycle       : total switching cycle length (timesteps)
+    T_green       : number of green timesteps per cycle (T_red = T_cycle - T_green)
+    offset        : if True, consecutive lights are phase-shifted by T_cycle/N
+    phase_offsets : optional explicit per-light phase array; overrides ``offset``.
+                    Used by sensitivity work for green-wave/random strategies.
     """
 
     def __init__(self, L=500, v_max=5, p_rand=0.3, p_in=0.5,
-                 N=2, T_cycle=30, T_green=None, offset=False):
+                 N=2, T_cycle=30, T_green=None, offset=False,
+                 phase_offsets=None):
         super().__init__(L=L, v_max=v_max, p_rand=p_rand, p_in=p_in)
         self.N       = N
         self.T_cycle = T_cycle
@@ -208,8 +231,15 @@ class TrafficCAWithLights(TrafficCA):
             [L * (i + 1) // (N + 1) for i in range(N)], dtype=int
         )
 
-        # Phase offsets per light
-        if offset:
+        # Phase offsets per light: explicit array wins, else evenly-spread, else zero.
+        if phase_offsets is not None:
+            phase_offsets = np.asarray(phase_offsets, dtype=int)
+            if phase_offsets.shape != (N,):
+                raise ValueError(
+                    f"phase_offsets must have shape ({N},), got {phase_offsets.shape}"
+                )
+            self.phase_offsets = phase_offsets % T_cycle
+        elif offset:
             self.phase_offsets = np.array(
                 [int(i * T_cycle / N) for i in range(N)], dtype=int
             )
