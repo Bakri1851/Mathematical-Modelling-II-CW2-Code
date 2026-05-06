@@ -84,19 +84,13 @@ class TrafficCA:
         (car or red light). Returns array of gaps.
         `obstacle_positions` is sorted array of all blocking cell indices.
         """
-        gaps = np.full(len(positions), self.L, dtype=int)
+        L = self.L
         if len(obstacle_positions) == 0:
-            # no obstacles — gap is distance to road end
-            gaps = self.L - positions
-            return gaps
-        for i, p in enumerate(positions):
-            # find first obstacle strictly ahead
-            idx = np.searchsorted(obstacle_positions, p, side='right')
-            if idx < len(obstacle_positions):
-                gaps[i] = obstacle_positions[idx] - p - 1
-            else:
-                gaps[i] = self.L - p  # free run to exit
-        return gaps
+            return L - positions
+        idx = np.searchsorted(obstacle_positions, positions, side='right')
+        has_next = idx < len(obstacle_positions)
+        next_obs = obstacle_positions[np.minimum(idx, len(obstacle_positions) - 1)]
+        return np.where(has_next, next_obs - positions - 1, L - positions)
 
     # ── Red-light obstacle positions (overridden by subclass) ─────────────────
 

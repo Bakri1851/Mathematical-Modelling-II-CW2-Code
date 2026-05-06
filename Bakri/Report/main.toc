@@ -1,0 +1,13 @@
+\contentsline {section}{\numberline {1}Introduction}{3}{section.1}%
+\contentsline {subsection}{\numberline {1.1}Real-world Context}{3}{subsection.1.1}%
+\contentsline {section}{\numberline {2}Background}{4}{section.2}%
+\contentsline {section}{\numberline {3}Model Description and Boundary Form}{5}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Model Assumptions}{5}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Spatial Domain and Policy Setup}{5}{subsection.3.2}%
+\contentsline {section}{\numberline {4}Numerical Method and Validation}{6}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Numerical Implementation}{6}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Validation}{6}{subsection.4.2}%
+\contentsline {section}{\numberline {5}Baseline Results}{7}{section.5}%
+\contentsline {section}{\numberline {6}Sensitivity Analysis}{8}{section.6}%
+\contentsline {section}{\numberline {7}Conclusion}{9}{section.7}%
+\contentsline {section}{References}{10}{section*.2}%

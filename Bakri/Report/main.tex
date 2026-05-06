@@ -1,0 +1,94 @@
+\documentclass{article}
+\usepackage{graphicx} 
+\usepackage{amsmath}
+\usepackage{titling}
+\usepackage{fancyhdr}
+\usepackage{enumerate}
+\usepackage{float}
+\usepackage{subcaption}
+\usepackage{cite}
+\usepackage[nottoc]{tocbibind}
+\usepackage{url}
+\usepackage{hyperref}
+\usepackage[none]{hyphenat}
+\usepackage{natbib}
+\usepackage{geometry}
+
+\geometry{a4paper, includehead, left=0.75in, right=0.75in, top=0.3in, bottom=0.75in} % Page margins, change as you need
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.6em}     % Space between paragraphs
+
+\pagestyle{fancy}
+\fancyhf{}
+
+\fancyhead[L]{\nouppercase{\leftmark}}      
+\fancyhead[R]{\thepage}
+
+\fancyfoot[C]{\textit{Abubakar Othman (F221611) }} 
+
+
+\renewcommand{\footrulewidth}{0.4pt}
+
+
+\begin{document}
+
+\begin{titlepage}
+    \begin{center}
+        \includegraphics[width=0.75\textwidth]{images/lboro-logo.png}\\[0.5cm]
+        
+        {\Huge \textbf{Cellular Automata for Two Lane Traffic Flow }}\\[2cm]
+        
+
+        \begin{tabular}{c}
+            \textbf{Abubakar Othman (F221611)} \\[6pt]
+            \textbf{Mathematical Modelling II (25MAP211)} \\[6pt]
+            \textbf{Department of Mathematical Sciences} \\[6pt]
+        \end{tabular}
+
+
+
+    \end{center}
+\end{titlepage}
+
+\newpage
+\begin{abstract}
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0.6em}     % Space between paragraphs
+
+
+
+
+
+
+\textbf{Key Words:} 
+
+\end{abstract}
+
+
+\newpage
+\tableofcontents
+\newpage
+
+\include{main_sections/introduction}
+
+\include{main_sections/background}
+
+\include{main_sections/model_description}
+
+\include{main_sections/numerical_implementation}
+
+\include{main_sections/results_and_discussion}
+
+\include{main_sections/sensitivity}
+
+\include{main_sections/conclusion}
+
+\appendix
+
+
+\newpage
+\bibliographystyle{ieeetr}\renewcommand\harvardurl{\textbf{URL:} \url}
+\bibliography{references}
+
+\end{document}

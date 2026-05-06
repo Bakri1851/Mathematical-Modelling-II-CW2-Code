@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(jupyter --version)",
+      "Bash(PYTHONIOENCODING=utf-8 python -m nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=600 nasch_two_lane.ipynb)"
+    ]
+  }
+}

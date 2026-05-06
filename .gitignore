@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 *.pyo
 .ipynb_checkpoints/
+Bakri/data/*.npz
+Bakri/REPORT_PLAN.md
+references/
