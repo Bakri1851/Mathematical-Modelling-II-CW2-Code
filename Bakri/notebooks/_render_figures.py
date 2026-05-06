@@ -445,7 +445,8 @@ def fig_F14():
 
     v_free = V_MAX - P_RAND
     spacing = L / (N + 1)
-    phi_greenwave = int(round((spacing / v_free) % T_CYCLE))
+    # Correct green-wave: phi_i = -i*spacing/v_free mod T_cycle (light JUST turns green as car arrives)
+    phi_greenwave = int(round((-spacing / v_free) % T_CYCLE))
 
     grid_inphase = record(np.array([0, 0], dtype=int))
     grid_wave = record(np.array([0, phi_greenwave], dtype=int))
@@ -715,6 +716,276 @@ def fig_F11_F12_F13():
     plt.close(fig)
 
 
+# ── Single-lane lights helpers (used by F4_single, F5_single, F6_single, F_strats) ──
+def _greenwave_offsets(N, T_cycle, v_max, p_rand, L):
+    """Phase offsets that align consecutive lights at the free-flow speed.
+
+    A car leaving light 0 at the moment it turns green travels at v_free for
+    `spacing/v_free` steps before reaching light 1; light 1 should JUST turn
+    green at that arrival time. With phase_i(t) = (t + φ_i) mod T_cycle and
+    light green iff phase < T_green, "just turning green" means phase = 0.
+    Setting (travel_time + φ_1) mod T_cycle = 0 gives φ_i = (-i × travel_time) mod T_cycle.
+    The opposite sign (positive) is sub-optimal: light 1 turns green BEFORE
+    the car arrives, wasting green time.
+    """
+    v_free = max(0.1, v_max - p_rand)
+    spacing = L / (N + 1)
+    return np.array([
+        int(round((-i * spacing / v_free) % T_cycle)) for i in range(N)
+    ], dtype=int)
+
+
+def _measure_J_single_lights(L, v_max, p_rand, p_in, N, T_cycle, T_green,
+                              phase_offsets, T_warmup, T_measure, seed):
+    """Run TrafficCAWithLights for one (param-set, seed) and return through-flow J."""
+    np.random.seed(int(seed))
+    sim = TrafficCAWithLights(
+        L=L, v_max=int(v_max), p_rand=float(p_rand), p_in=float(p_in),
+        N=int(N), T_cycle=int(T_cycle), T_green=int(T_green),
+        phase_offsets=np.asarray(phase_offsets, dtype=int),
+    )
+    sim.warmup(T_warmup)
+    return sim.run(T_measure)
+
+
+# ── F4_single — single-lane J(T_cycle) for several N ──────────────────────
+def fig_F4_single():
+    L = 500
+    V_MAX = 5
+    P_RAND = 0.3
+    P_IN = 0.4
+    SEEDS = np.arange(3)
+    TC_GRID = np.array([10, 20, 30, 40, 60, 80, 100, 150])
+    N_GRID = np.array([1, 2, 3])
+    T_WARMUP = 800
+    T_MEASURE = 2500
+
+    def compute():
+        flow = np.zeros((len(N_GRID), len(TC_GRID), len(SEEDS)))
+        for ni, N in enumerate(N_GRID):
+            for ti, Tc in enumerate(TC_GRID):
+                T_green = int(Tc) // 2
+                phi = _greenwave_offsets(int(N), int(Tc), V_MAX, P_RAND, L)
+                for si, seed in enumerate(SEEDS):
+                    flow[ni, ti, si] = _measure_J_single_lights(
+                        L, V_MAX, P_RAND, P_IN, int(N), int(Tc), T_green,
+                        phi, T_WARMUP, T_MEASURE, int(seed),
+                    )
+        return dict(flow=flow, T_cycle_grid=TC_GRID, N_grid=N_GRID, seeds=SEEDS,
+                    L=L, v_max=V_MAX, p_rand=P_RAND, p_in=P_IN,
+                    T_warmup=T_WARMUP, T_measure=T_MEASURE)
+
+    d = load_or_compute(os.path.join(DATA_DIR, "F4_single_J_vs_Tcycle.npz"), compute)
+
+    fig, ax = plt.subplots()
+    v_free = V_MAX - P_RAND
+    for ni, N in enumerate(d["N_grid"]):
+        m = d["flow"][ni].mean(-1)
+        s = d["flow"][ni].std(-1)
+        ax.plot(d["T_cycle_grid"], m, "-o", label=f"N = {int(N)}")
+        ax.fill_between(d["T_cycle_grid"], m - s, m + s, alpha=0.2)
+        # Resonance marker for this N: T_cycle = 2 * d / v_free where d = L/(N+1)
+        Tc_res = 2 * (L / (int(N) + 1)) / v_free
+        ax.axvline(Tc_res, linestyle="--", alpha=0.4,
+                   color=ax.lines[-1].get_color())
+    ax.set_xlabel(r"Cycle length $T_\mathrm{cycle}$ [timesteps]")
+    ax.set_ylabel("Throughput J [cars / timestep]")
+    ax.set_title(f"F4 — Single-lane J vs $T_\\mathrm{{cycle}}$ (green-wave; $p_\\mathrm{{in}}$={P_IN})")
+    ax.legend()
+    fig.savefig(os.path.join(FIG_DIR, "F4_single_J_vs_Tcycle.png"))
+    plt.close(fig)
+
+
+# ── F5_single — single-lane J(phi) at N=2 ────────────────────────────────
+def fig_F5_single():
+    L = 500
+    V_MAX = 5
+    P_RAND = 0.3
+    P_IN = 0.4
+    N = 2
+    T_CYCLE = 60
+    T_GREEN = 30
+    SEEDS = np.arange(3)
+    PHI_GRID = np.arange(0, T_CYCLE, 5)  # 12 points
+    T_WARMUP = 800
+    T_MEASURE = 2500
+
+    def compute():
+        flow = np.zeros((len(PHI_GRID), len(SEEDS)))
+        for pi, phi in enumerate(PHI_GRID):
+            phase_offsets = np.array([0, int(phi)], dtype=int)
+            for si, seed in enumerate(SEEDS):
+                flow[pi, si] = _measure_J_single_lights(
+                    L, V_MAX, P_RAND, P_IN, N, T_CYCLE, T_GREEN,
+                    phase_offsets, T_WARMUP, T_MEASURE, int(seed),
+                )
+        return dict(flow=flow, phi_grid=PHI_GRID, seeds=SEEDS,
+                    L=L, v_max=V_MAX, p_rand=P_RAND, p_in=P_IN,
+                    N=N, T_cycle=T_CYCLE, T_green=T_GREEN,
+                    T_warmup=T_WARMUP, T_measure=T_MEASURE)
+
+    d = load_or_compute(os.path.join(DATA_DIR, "F5_single_phi_sweep.npz"), compute)
+    m = d["flow"].mean(-1)
+    s = d["flow"].std(-1)
+
+    v_free = V_MAX - P_RAND
+    spacing = L / (N + 1)
+    phi_greenwave = int(round((spacing / v_free) % T_CYCLE))
+    phi_anti = T_CYCLE // 2
+
+    fig, ax = plt.subplots()
+    ax.plot(d["phi_grid"], m, "-o")
+    ax.fill_between(d["phi_grid"], m - s, m + s, alpha=0.2)
+    ax.axvline(0, linestyle="--", color="tab:green", alpha=0.7,
+               label=r"in-phase ($\varphi$ = 0)")
+    ax.axvline(phi_greenwave, linestyle="--", color="tab:red", alpha=0.7,
+               label=fr"green-wave ($\varphi$ = {phi_greenwave})")
+    ax.axvline(phi_anti, linestyle="--", color="tab:purple", alpha=0.7,
+               label=fr"anti-phase ($\varphi$ = {phi_anti})")
+    ax.set_xlabel(r"Phase offset $\varphi$ of light 2 [timesteps]")
+    ax.set_ylabel("Throughput J [cars / timestep]")
+    ax.set_title(f"F5 — Single-lane J vs phase offset (N={N}, $T_\\mathrm{{cycle}}$={T_CYCLE})")
+    ax.legend(loc="lower right")
+    fig.savefig(os.path.join(FIG_DIR, "F5_single_phi_sweep.png"))
+    plt.close(fig)
+
+
+# ── F6_single — single-lane J(N) for sync vs green-wave ──────────────────
+def fig_F6_single():
+    L = 500
+    V_MAX = 5
+    P_RAND = 0.3
+    P_IN = 0.4
+    T_CYCLE = 60
+    T_GREEN = 30
+    SEEDS = np.arange(3)
+    N_GRID = np.array([1, 2, 3, 4, 5, 6, 8, 10])
+    STRATEGIES = ["sync", "green-wave"]
+    T_WARMUP = 800
+    T_MEASURE = 2500
+
+    def compute():
+        flow = np.zeros((len(N_GRID), len(STRATEGIES), len(SEEDS)))
+        for ni, N in enumerate(N_GRID):
+            sync_phi = np.zeros(int(N), dtype=int)
+            wave_phi = _greenwave_offsets(int(N), T_CYCLE, V_MAX, P_RAND, L)
+            for si_strat, strat_phi in enumerate([sync_phi, wave_phi]):
+                for si, seed in enumerate(SEEDS):
+                    flow[ni, si_strat, si] = _measure_J_single_lights(
+                        L, V_MAX, P_RAND, P_IN, int(N), T_CYCLE, T_GREEN,
+                        strat_phi, T_WARMUP, T_MEASURE, int(seed),
+                    )
+        return dict(flow=flow, N_grid=N_GRID, strategies=np.array(STRATEGIES),
+                    seeds=SEEDS, L=L, v_max=V_MAX, p_rand=P_RAND, p_in=P_IN,
+                    T_cycle=T_CYCLE, T_green=T_GREEN,
+                    T_warmup=T_WARMUP, T_measure=T_MEASURE)
+
+    d = load_or_compute(os.path.join(DATA_DIR, "F6_single_J_vs_N.npz"), compute)
+
+    fig, ax = plt.subplots()
+    for si_strat, strat in enumerate(STRATEGIES):
+        m = d["flow"][:, si_strat, :].mean(-1)
+        s = d["flow"][:, si_strat, :].std(-1)
+        ax.plot(d["N_grid"], m, "-o", label=strat)
+        ax.fill_between(d["N_grid"], m - s, m + s, alpha=0.2)
+    ax.set_xlabel("Number of lights N")
+    ax.set_ylabel("Throughput J [cars / timestep]")
+    ax.set_title(f"F6 — Single-lane J vs N (sync vs green-wave; $T_\\mathrm{{cycle}}$={T_CYCLE})")
+    ax.legend()
+    fig.savefig(os.path.join(FIG_DIR, "F6_single_J_vs_N.png"))
+    plt.close(fig)
+
+
+# ── F_strats — single-lane J(N) for four coordination strategies ──────────
+def fig_F_strats():
+    L = 500
+    V_MAX = 5
+    P_RAND = 0.3
+    P_IN = 0.4
+    T_CYCLE = 60
+    T_GREEN = 30
+    SEEDS = np.arange(3)
+    N_GRID = np.array([2, 3, 4, 5, 6, 8])
+    STRATEGIES = ["sync", "green-wave", "anti-greenwave", "random"]
+    N_RANDOM_DRAWS = 5
+    T_WARMUP = 800
+    T_MEASURE = 2500
+
+    def offsets_for(N, strategy, rng_seed=None):
+        v_free = max(0.1, V_MAX - P_RAND)
+        spacing = L / (int(N) + 1)
+        if strategy == "sync":
+            return np.zeros(int(N), dtype=int)
+        if strategy == "green-wave":
+            # Correct: light_i turns green AS car arrives (φ_i = -i·spacing/v_free).
+            return np.array([
+                int(round((-i * spacing / v_free) % T_CYCLE)) for i in range(int(N))
+            ], dtype=int)
+        if strategy == "anti-greenwave":
+            # Reverse: light_i turns green AS car arrives going BACKWARDS — so as
+            # car (going forward) arrives the light has been red the whole window.
+            return np.array([
+                int(round((i * spacing / v_free) % T_CYCLE)) for i in range(int(N))
+            ], dtype=int)
+        if strategy == "random":
+            rng = np.random.RandomState(int(rng_seed))
+            return rng.randint(0, T_CYCLE, size=int(N))
+        raise ValueError(f"unknown strategy: {strategy}")
+
+    def compute():
+        # For sync / green-wave / anti-greenwave: 1 offset config × n_seeds seeds.
+        # For random: N_RANDOM_DRAWS independent offset configs, each over n_seeds.
+        flow = np.zeros((len(N_GRID), len(STRATEGIES), len(SEEDS)))
+        flow_random_draws = np.zeros((len(N_GRID), N_RANDOM_DRAWS, len(SEEDS)))
+        for ni, N in enumerate(N_GRID):
+            for si_strat, strat in enumerate(STRATEGIES):
+                if strat == "random":
+                    for di in range(N_RANDOM_DRAWS):
+                        phi = offsets_for(int(N), "random", rng_seed=1000 * int(N) + di)
+                        for si, seed in enumerate(SEEDS):
+                            flow_random_draws[ni, di, si] = _measure_J_single_lights(
+                                L, V_MAX, P_RAND, P_IN, int(N), T_CYCLE, T_GREEN,
+                                phi, T_WARMUP, T_MEASURE, int(seed),
+                            )
+                    flow[ni, si_strat, :] = flow_random_draws[ni].mean(axis=0)  # avg over draws
+                else:
+                    phi = offsets_for(int(N), strat)
+                    for si, seed in enumerate(SEEDS):
+                        flow[ni, si_strat, si] = _measure_J_single_lights(
+                            L, V_MAX, P_RAND, P_IN, int(N), T_CYCLE, T_GREEN,
+                            phi, T_WARMUP, T_MEASURE, int(seed),
+                        )
+        return dict(flow=flow, flow_random_draws=flow_random_draws,
+                    N_grid=N_GRID, strategies=np.array(STRATEGIES),
+                    seeds=SEEDS, L=L, v_max=V_MAX, p_rand=P_RAND, p_in=P_IN,
+                    T_cycle=T_CYCLE, T_green=T_GREEN, n_random_draws=N_RANDOM_DRAWS,
+                    T_warmup=T_WARMUP, T_measure=T_MEASURE)
+
+    d = load_or_compute(os.path.join(DATA_DIR, "F_strats.npz"), compute)
+
+    fig, ax = plt.subplots()
+    colors = {"sync": "tab:blue", "green-wave": "tab:green",
+              "anti-greenwave": "tab:red", "random": "tab:gray"}
+    for si_strat, strat in enumerate(STRATEGIES):
+        m = d["flow"][:, si_strat, :].mean(-1)
+        s = d["flow"][:, si_strat, :].std(-1)
+        ax.plot(d["N_grid"], m, "-o", label=strat, color=colors[strat])
+        ax.fill_between(d["N_grid"], m - s, m + s, alpha=0.2, color=colors[strat])
+    ax.set_xlabel("Number of lights N")
+    ax.set_ylabel("Throughput J [cars / timestep]")
+    ax.set_title(f"F-strats — Single-lane J vs N for four coordination strategies")
+    ax.legend()
+    fig.savefig(os.path.join(FIG_DIR, "F_strats.png"))
+    plt.close(fig)
+
+    # Sanity-check ordering: print mean J at N=4 for each strategy.
+    idx_n4 = int(np.argmin(np.abs(d["N_grid"] - 4)))
+    print(f"  F-strats at N={int(d['N_grid'][idx_n4])}:")
+    for si_strat, strat in enumerate(STRATEGIES):
+        Jm = float(d["flow"][idx_n4, si_strat, :].mean())
+        print(f"    {strat:<16} J = {Jm:.4f}")
+
+
 def main():
     t_total = time.time()
     _timed("F2 (single-lane open J(p_in))", fig_F2)
@@ -726,6 +997,10 @@ def main():
     _timed("F8 (two-lane phi×p_chg heatmap)", fig_F8)
     _timed("F14 (capstone in-phase vs green-wave)", fig_F14)
     _timed("F11+F12+F13 (sensitivity)", fig_F11_F12_F13)
+    _timed("F4_single (J vs T_cycle, single-lane)", fig_F4_single)
+    _timed("F5_single (J vs phi, single-lane)", fig_F5_single)
+    _timed("F6_single (J vs N, sync vs green-wave)", fig_F6_single)
+    _timed("F_strats (J vs N, 4 strategies)", fig_F_strats)
     print(f"\nALL DONE in {time.time() - t_total:.1f}s")
 
 

@@ -3,5 +3,5 @@ __pycache__/
 *.pyo
 .ipynb_checkpoints/
 Bakri/data/*.npz
-Bakri/REPORT_PLAN.md
+Bakri/obsidian vault/
 references/

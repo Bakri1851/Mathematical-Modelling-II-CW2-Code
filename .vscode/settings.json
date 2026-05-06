@@ -1,0 +1,13 @@
+{
+  "files.exclude": {
+    "**/*.aux": { "when": "$(basename).tex" },
+    "**/*.bbl": { "when": "$(basename).tex" },
+    "**/*.blg": { "when": "$(basename).tex" },
+    "**/*.fdb_latexmk": { "when": "$(basename).tex" },
+    "**/*.fls": { "when": "$(basename).tex" },
+    "**/*.log": { "when": "$(basename).tex" },
+    "**/*.out": { "when": "$(basename).tex" },
+    "**/*.synctex.gz": { "when": "$(basename).tex" },
+    "**/*.toc": { "when": "$(basename).tex" }
+  }
+}
