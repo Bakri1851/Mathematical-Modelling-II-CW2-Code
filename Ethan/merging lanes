@@ -1,0 +1,410 @@
+"""
+Two-Lane Merge — NaSch Cellular Automaton
+Spacetime diagrams for 3 different v_max values
+
+Layout:
+  Pre-merge  : two parallel lanes (Lane A top, Lane B bottom)
+  Merge point: cars from both lanes interleave into one single lane
+  Post-merge : single lane continues
+
+The merge is modelled as a zipper: at each step, cars from both
+lanes that reach the merge cell compete to enter the single lane.
+Lane A gets priority in odd steps, Lane B in even steps (fair alternation).
+
+Three subplots side by side, one per v_max value.
+Each subplot shows:
+  Top strip    — Lane A (pre-merge), cyan
+  Middle strip — Lane B (pre-merge), orange  
+  Bottom strip — Merged single lane, green
+  Vertical dashed line at the merge point
+
+Requires: pip install numpy matplotlib
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import random
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Parameters
+# ─────────────────────────────────────────────────────────────────────────────
+
+L_PRE       = 150      # cells in each pre-merge lane
+L_POST      = 150      # cells in the post-merge single lane
+MERGE_CELL  = L_PRE    # conceptual merge point index
+
+DENSITY_A   = 0.5     # initial density lane A
+DENSITY_B   = 0.75     # initial density lane B
+P_BRAKE     = 0.30     # random-brake probability
+
+VMAX_LIST   = [1, 3, 5]   # three scenarios
+
+WARMUP      = 300      # steps before recording
+T_RECORD    = 500      # steps to record
+
+SEED        = 99
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NaSch helpers
+# ─────────────────────────────────────────────────────────────────────────────
+
+def gap_ahead(road, pos, length):
+    """Cells to the next car ahead (open boundary — no wrap)."""
+    for d in range(1, length + 1):
+        ahead = pos + d
+        if ahead >= length:
+            return length - pos - 1   # free run to end
+        if road[ahead] != -1:
+            return d - 1
+    return length - pos - 1
+
+
+def nasch_open_step(road, v_max, inflow_prob=0.5, inflow_speed=None):
+    """
+    One NaSch step with open boundary conditions.
+      - Left boundary: inject a car with probability inflow_prob if cell 0 is empty
+      - Right boundary: cars that move past the end are removed
+    Returns new road.
+    """
+    L = len(road)
+    new = np.full(L, -1, dtype=np.int8)
+    if inflow_speed is None:
+        inflow_speed = v_max
+
+    # Try injecting at left boundary
+    if road[0] == -1 and random.random() < inflow_prob:
+        road[0] = min(1, inflow_speed)
+
+    for i in np.where(road != -1)[0]:
+        v = road[i]
+        v = min(v + 1, v_max)                    # accelerate
+        g = gap_ahead(road, i, L)
+        v = min(v, g)                             # decelerate for gap
+        if random.random() < P_BRAKE:
+            v = max(v - 1, 0)                     # random brake
+        npos = i + v
+        if npos < L:
+            if new[npos] == -1:
+                new[npos] = v
+            else:
+                # conflict: stay, reduced speed
+                if new[i] == -1:
+                    new[i] = max(v - 1, 0)
+        # else: car exits the road (absorbed at right boundary)
+
+    return new
+
+
+def nasch_periodic_step(road, v_max):
+    """
+    One NaSch step with periodic boundary (for pre-merge lanes
+    when we want sustained density without re-injection logic).
+    """
+    L = len(road)
+    new = np.full(L, -1, dtype=np.int8)
+
+    for i in np.where(road != -1)[0]:
+        v = road[i]
+        v = min(v + 1, v_max)
+        # gap (periodic)
+        for d in range(1, L + 1):
+            if road[(i + d) % L] != -1:
+                v = min(v, d - 1)
+                break
+        if random.random() < P_BRAKE:
+            v = max(v - 1, 0)
+        npos = (i + v) % L
+        if new[npos] == -1:
+            new[npos] = v
+        else:
+            new[i] = max(v - 1, 0)
+
+    return new
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Merge step
+# ─────────────────────────────────────────────────────────────────────────────
+
+def merge_step(lane_a, lane_b, merged, v_max, step_num):
+    """
+    Advance one timestep for the full merge system.
+
+    Pre-merge lanes use periodic boundaries to keep density stable.
+    The last cell of each pre-merge lane feeds into the merged lane.
+    Merged lane uses open right boundary (cars exit freely).
+
+    Zipper merge: alternate priority between A and B each step.
+    Returns (new_a, new_b, new_merged, n_entered)
+    """
+    La = len(lane_a)
+    Lb = len(lane_b)
+    Lm = len(merged)
+
+    # ── Step pre-merge lanes (periodic) ──────────────────────────────────────
+    new_a = nasch_periodic_step(lane_a, v_max)
+    new_b = nasch_periodic_step(lane_b, v_max)
+
+    # ── Step merged lane (open right boundary) ────────────────────────────────
+    # First advance existing cars in merged lane (no left inflow yet)
+    new_m = np.full(Lm, -1, dtype=np.int8)
+    for i in np.where(merged != -1)[0]:
+        v = merged[i]
+        v = min(v + 1, v_max)
+        # gap ahead in merged lane only
+        g = gap_ahead(merged, i, Lm)
+        v = min(v, g)
+        if random.random() < P_BRAKE:
+            v = max(v - 1, 0)
+        npos = i + v
+        if npos < Lm:
+            if new_m[npos] == -1:
+                new_m[npos] = v
+            else:
+                if new_m[i] == -1:
+                    new_m[i] = max(v - 1, 0)
+        # else: exits
+
+    # ── Zipper merge: try to insert from A and B into merged cell 0 ───────────
+    # A car can leave the pre-merge lane if it's in the last cell
+    # and the merged lane's first cell is free.
+    car_a = new_a[La - 1]
+    car_b = new_b[Lb - 1]
+
+    # Alternate priority: even steps → A first, odd steps → B first
+    candidates = [(car_a, 'a'), (car_b, 'b')] if step_num % 2 == 0 \
+                 else [(car_b, 'b'), (car_a, 'a')]
+
+    for car_v, source in candidates:
+        if car_v != -1 and new_m[0] == -1:
+            # Gap from cell 0 in merged lane
+            g = gap_ahead(new_m, -1, Lm)   # from virtual position -1
+            v = min(car_v + 1, v_max)
+            v = min(v, g)
+            if random.random() < P_BRAKE:
+                v = max(v - 1, 0)
+            new_m[0] = v
+            # Remove from pre-merge lane
+            if source == 'a':
+                new_a[La - 1] = -1
+            else:
+                new_b[Lb - 1] = -1
+
+    return new_a, new_b, merged, new_m
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Run one scenario
+# ─────────────────────────────────────────────────────────────────────────────
+
+def run_scenario(v_max, seed):
+    random.seed(seed)
+    np.random.seed(seed)
+
+    # Initialise pre-merge lanes
+    lane_a = np.full(L_PRE, -1, dtype=np.int8)
+    lane_b = np.full(L_PRE, -1, dtype=np.int8)
+    merged = np.full(L_POST, -1, dtype=np.int8)
+
+    pos_a = np.random.choice(L_PRE, int(DENSITY_A * L_PRE), replace=False)
+    pos_b = np.random.choice(L_PRE, int(DENSITY_B * L_PRE), replace=False)
+    for p in pos_a: lane_a[p] = random.randint(0, v_max)
+    for p in pos_b: lane_b[p] = random.randint(0, v_max)
+
+    # Warmup
+    for t in range(WARMUP):
+        lane_a, lane_b, _, merged = merge_step(
+            lane_a, lane_b, merged, v_max, t)
+
+    # Record
+    hist_a = np.full((T_RECORD, L_PRE),  -1, dtype=np.int8)
+    hist_b = np.full((T_RECORD, L_PRE),  -1, dtype=np.int8)
+    hist_m = np.full((T_RECORD, L_POST), -1, dtype=np.int8)
+
+    for t in range(T_RECORD):
+        lane_a, lane_b, _, merged = merge_step(
+            lane_a, lane_b, merged, v_max, WARMUP + t)
+        hist_a[t] = lane_a
+        hist_b[t] = lane_b
+        hist_m[t] = merged
+
+    return hist_a, hist_b, hist_m
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Build RGBA strip image
+# ─────────────────────────────────────────────────────────────────────────────
+
+BG = np.array([0.06, 0.07, 0.10])
+
+def history_to_rgba(hist, v_max, base_colour, empty_col=None):
+    """
+    hist: (T, L) int8 array  (-1=empty, 0..v_max=speed)
+    base_colour: (3,) RGB for fastest cars
+    Returns (T, L, 4) RGBA float32
+    """
+    T, L = hist.shape
+    img = np.zeros((T, L, 4), dtype=np.float32)
+    if empty_col is None:
+        img[:, :, :3] = BG
+    else:
+        img[:, :, :3] = np.array(empty_col)
+    img[:, :, 3] = 1.0
+
+    occ  = hist >= 0
+    snorm = np.where(occ, hist / max(v_max, 1), 0.0).astype(np.float32)
+    bc   = np.array(base_colour, dtype=np.float32)
+    dark = bc * 0.20   # slow/stopped colour
+
+    img[occ, 0] = dark[0] + snorm[occ] * (bc[0] - dark[0])
+    img[occ, 1] = dark[1] + snorm[occ] * (bc[1] - dark[1])
+    img[occ, 2] = dark[2] + snorm[occ] * (bc[2] - dark[2])
+    img[occ, 3] = 1.0
+
+    return img
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Plot
+# ─────────────────────────────────────────────────────────────────────────────
+
+# Colour palette
+COL_A    = (0.00, 0.80, 1.00)   # cyan  — Lane A
+COL_B    = (1.00, 0.55, 0.10)   # amber — Lane B
+COL_M    = (0.35, 1.00, 0.45)   # green — Merged
+
+DIVIDER  = np.array([0.18, 0.20, 0.25])  # colour of lane divider rows
+MERGE_C  = np.array([0.90, 0.20, 0.20])  # merge point marker colour
+
+STRIP_H  = 6   # pixel rows per lane strip in display
+DIV_H    = 2   # divider height in pixel rows
+
+fig, axes = plt.subplots(1, 3, figsize=(18, 8), facecolor='#0d1117')
+fig.suptitle(
+    'Two-Lane → Single-Lane Merge  |  NaSch CA  |  3 Speed Limits\n'
+    f'density={DENSITY_A:.2f} (both lanes),  p_brake={P_BRAKE},  '
+    f'T={T_RECORD} steps recorded after {WARMUP} warmup',
+    color='#ffffff', fontsize=12, y=0.98)
+
+for ax_idx, (ax, v_max) in enumerate(zip(axes, VMAX_LIST)):
+    print(f"Running v_max={v_max}...")
+    hist_a, hist_b, hist_m = run_scenario(v_max, SEED + ax_idx)
+
+    img_a = history_to_rgba(hist_a, v_max, COL_A)
+    img_b = history_to_rgba(hist_b, v_max, COL_B)
+    img_m = history_to_rgba(hist_m, v_max, COL_M)
+
+    # Build composite image by repeating rows for visual height
+    def stretch(img, reps):
+        return np.repeat(img, reps, axis=0)
+
+    div_row = np.ones((DIV_H, max(L_PRE, L_POST), 4), dtype=np.float32)
+    div_row[:, :, :3] = DIVIDER; div_row[:, :, 3] = 1.0
+
+    # Pre-merge section (L_PRE wide), post-merge (L_POST wide)
+    # Make both the same total width with a vertical merge marker column
+    total_w = L_PRE + 1 + L_POST   # +1 for merge column
+    T_disp  = T_RECORD
+
+    # Full composite canvas
+    row_heights = [STRIP_H, DIV_H, STRIP_H, DIV_H, STRIP_H]
+    total_h = sum(r * T_disp if i in (0,2,4) else r
+                  for i, r in enumerate(row_heights))
+
+    full_img = np.zeros((sum(row_heights[i] * T_disp if i in (0,2,4)
+                             else row_heights[i]
+                             for i in range(5)),
+                         total_w, 4), dtype=np.float32)
+    full_img[:, :, :3] = BG; full_img[:, :, 3] = 1.0
+
+    # Row offsets
+    rA_start = 0
+    rA_end   = STRIP_H * T_disp
+    rDiv1    = rA_end
+    rB_start = rDiv1 + DIV_H
+    rB_end   = rB_start + STRIP_H * T_disp
+    rDiv2    = rB_end
+    rM_start = rDiv2 + DIV_H
+    rM_end   = rM_start + STRIP_H * T_disp
+
+    # Lane A (pre-merge, left portion)
+    img_a_s = stretch(img_a, STRIP_H)
+    full_img[rA_start:rA_end, :L_PRE, :] = img_a_s
+
+    # Lane B (pre-merge, left portion)
+    img_b_s = stretch(img_b, STRIP_H)
+    full_img[rB_start:rB_end, :L_PRE, :] = img_b_s
+
+    # Merged lane (post-merge, right portion)
+    img_m_s = stretch(img_m, STRIP_H)
+    full_img[rM_start:rM_end, L_PRE+1:L_PRE+1+L_POST, :] = img_m_s
+
+    # Divider rows
+    full_img[rDiv1:rDiv1+DIV_H, :, :3] = DIVIDER
+    full_img[rDiv2:rDiv2+DIV_H, :, :3] = DIVIDER
+
+    # Merge column (vertical red/amber stripe)
+    full_img[:, L_PRE, :3] = MERGE_C; full_img[:, L_PRE, 3] = 1.0
+
+    ax.imshow(full_img, aspect='auto', origin='upper',
+              interpolation='nearest')
+
+    # Axes formatting
+    ax.set_facecolor('#0d1117')
+    for sp in ax.spines.values():
+        sp.set_color('#2a3040')
+    ax.tick_params(colors='#4a5168', labelsize=9)
+
+    # x-axis ticks: label pre-merge as 0..L_PRE, post-merge as 0..L_POST
+    xticks = [0, L_PRE//2, L_PRE, L_PRE+1+L_POST//2, L_PRE+1+L_POST]
+    xlabels = ['0', str(L_PRE//2), f'merge\n({L_PRE})',
+               str(L_POST//2), str(L_POST)]
+    ax.set_xticks(xticks)
+    ax.set_xticklabels(xlabels, color='#aab0c0', fontsize=8)
+
+    # y-axis: time steps
+    total_pixel_h = full_img.shape[0]
+    # map y pixels to time steps is complex due to strip heights;
+    # just label approx
+    ytick_steps = [0, T_RECORD//4, T_RECORD//2, 3*T_RECORD//4, T_RECORD]
+    ytick_px    = [s * STRIP_H for s in ytick_steps]  # approx (lane A rows)
+    ax.set_yticks(ytick_px)
+    ax.set_yticklabels(ytick_steps, color='#aab0c0', fontsize=8)
+
+    ax.set_xlabel('Position (cell)', color='#aab0c0', fontsize=10, labelpad=6)
+    if ax_idx == 0:
+        ax.set_ylabel('Time (steps)', color='#aab0c0', fontsize=10, labelpad=6)
+
+    ax.set_title(f'v_max = {v_max}', color='#ffffff', fontsize=13, pad=8)
+
+    # Lane labels on left side
+    mid_A = (rA_start + rA_end) // 2
+    mid_B = (rB_start + rB_end) // 2
+    mid_M = (rM_start + rM_end) // 2
+    for y, txt, col in [(mid_A, 'Lane A →', '#00ccff'),
+                        (mid_B, 'Lane B →', '#ff8c20'),
+                        (mid_M, 'Merged →', '#39ff70')]:
+        ax.text(-2, y, txt, color=col, fontsize=8, ha='right', va='center',
+                rotation=90, transform=ax.transData)
+
+# Legend
+legend_items = [
+    mpatches.Patch(color=COL_A,            label='Lane A — fast car'),
+    mpatches.Patch(color=tuple(c*0.20 for c in COL_A), label='Lane A — slow/stopped'),
+    mpatches.Patch(color=COL_B,            label='Lane B — fast car'),
+    mpatches.Patch(color=COL_M,            label='Merged — fast car'),
+    mpatches.Patch(color=MERGE_C,          label='Merge point'),
+    mpatches.Patch(color=DIVIDER,          label='Lane divider'),
+]
+fig.legend(handles=legend_items, loc='lower center', ncol=6,
+           fontsize=9, framealpha=0.5, facecolor='#0d1117',
+           edgecolor='#2a3040', labelcolor='#aab0c0',
+           bbox_to_anchor=(0.5, 0.01))
+
+plt.tight_layout(rect=[0, 0.06, 1, 0.96])
+plt.savefig('merge_spacetime.png', dpi=150, bbox_inches='tight',
+            facecolor='#0d1117')
+print("Saved → merge_spacetime.png")
+plt.show()
