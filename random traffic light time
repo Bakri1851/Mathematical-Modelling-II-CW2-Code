@@ -1,0 +1,206 @@
+"""
+Single-Direction NaSch Traffic — 5 Pedestrian-Button Traffic Lights
+Produces a static spacetime diagram.
+
+Features:
+  - One lane moving rightward (periodic boundary)
+  - 5 traffic lights at non-equidistant positions
+  - Each light runs independently (out of phase)
+  - Red duration: fixed (RED_DUR steps)
+  - Green duration: drawn uniformly from [GREEN_MIN, GREEN_MAX] each cycle
+    simulating a pedestrian pressing a button at a random moment
+
+Requires: pip install numpy matplotlib
+"""
+
+import numpy as np
+import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import random
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Parameters
+# ─────────────────────────────────────────────────────────────────────────────
+
+L               = 250
+V_MAX           = 5
+P_BRAKE         = 0.30
+DENSITY         = 0.30
+
+LIGHT_POSITIONS = [35, 75, 120, 175, 220]
+PHASE_OFFSETS   = [0, 28, 55, 14, 42]
+
+RED_DUR         = 30
+GREEN_MIN       = 20
+GREEN_MAX       = 100
+
+WARMUP          = 300
+T_RECORD        = 600
+
+SEED            = 42
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Pedestrian-button light
+# ─────────────────────────────────────────────────────────────────────────────
+
+class PedestrianLight:
+    def __init__(self, phase_offset=0):
+        self.green_dur = random.randint(GREEN_MIN, GREEN_MAX)
+        self.is_red    = False
+        self.timer     = 0
+        for _ in range(phase_offset):
+            self._advance()
+
+    def _advance(self):
+        self.timer += 1
+        if not self.is_red:
+            if self.timer >= self.green_dur:
+                self.is_red = True
+                self.timer  = 0
+        else:
+            if self.timer >= RED_DUR:
+                self.green_dur = random.randint(GREEN_MIN, GREEN_MAX)
+                self.is_red    = False
+                self.timer     = 0
+
+    def step(self):
+        self._advance()
+        return self.is_red
+
+# ─────────────────────────────────────────────────────────────────────────────
+# NaSch step
+# ─────────────────────────────────────────────────────────────────────────────
+
+def nasch_step(road, lights_red):
+    new = np.full(L, -1, dtype=np.int8)
+
+    for i in np.where(road != -1)[0]:
+        v = road[i]
+
+        # 1. Accelerate
+        v = min(v + 1, V_MAX)
+
+        # 2. Decelerate for gap to next car
+        for d in range(1, L + 1):
+            if road[(i + d) % L] != -1:
+                v = min(v, d - 1)
+                break
+
+        # 3. Decelerate for red lights ahead
+        for lpos, is_red in lights_red.items():
+            if is_red:
+                d = (lpos - i) % L
+                if 0 < d <= v + 1:
+                    v = min(v, d - 1)
+
+        # 4. Random brake
+        if random.random() < P_BRAKE:
+            v = max(v - 1, 0)
+
+        # 5. Move
+        npos = (i + v) % L
+        if new[npos] == -1:
+            new[npos] = v
+        else:
+            new[i] = max(v - 1, 0)
+
+    return new
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Simulation
+# ─────────────────────────────────────────────────────────────────────────────
+
+random.seed(SEED)
+np.random.seed(SEED)
+
+road = np.full(L, -1, dtype=np.int8)
+positions = np.random.choice(L, size=int(DENSITY * L), replace=False)
+for p in positions:
+    road[p] = np.random.randint(0, V_MAX + 1)
+
+lights = [PedestrianLight(phase_offset=PHASE_OFFSETS[i])
+          for i in range(len(LIGHT_POSITIONS))]
+
+def advance_lights():
+    return {LIGHT_POSITIONS[i]: lights[i].step() for i in range(len(lights))}
+
+# Warm up
+for _ in range(WARMUP):
+    lred = advance_lights()
+    road = nasch_step(road, lred)
+
+# Record
+speed_history = np.full((T_RECORD, L), -1, dtype=np.int8)
+light_history = np.zeros((T_RECORD, len(LIGHT_POSITIONS)), dtype=np.uint8)
+
+for t in range(T_RECORD):
+    lred = advance_lights()
+    road = nasch_step(road, lred)
+    speed_history[t] = road
+    for k, lpos in enumerate(LIGHT_POSITIONS):
+        light_history[t, k] = int(lred[lpos])
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Build RGBA image
+# ─────────────────────────────────────────────────────────────────────────────
+
+BG  = np.array([0.05, 0.07, 0.10])
+img = np.zeros((T_RECORD, L, 4), dtype=np.float32)
+img[:, :, :3] = BG
+img[:, :,  3] = 1.0
+
+occ_mask = speed_history >= 0
+spd_norm = np.where(occ_mask, speed_history / V_MAX, 0.0).astype(np.float32)
+
+img[occ_mask, 0] = spd_norm[occ_mask] * 0.10
+img[occ_mask, 1] = 0.30 + spd_norm[occ_mask] * 0.70
+img[occ_mask, 2] = 0.60 + spd_norm[occ_mask] * 0.40
+img[occ_mask, 3] = 1.0
+
+for k, lpos in enumerate(LIGHT_POSITIONS):
+    red_rows   = light_history[:, k] == 1
+    green_rows = ~red_rows
+    img[red_rows,   lpos] = [1.00, 0.18, 0.18, 1.0]
+    img[green_rows, lpos] = [0.18, 1.00, 0.35, 1.0]
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Plot
+# ─────────────────────────────────────────────────────────────────────────────
+
+fig, ax = plt.subplots(figsize=(14, 8), facecolor='#0d1117')
+ax.set_facecolor('#0d1117')
+for sp in ax.spines.values():
+    sp.set_color('#2a3040')
+
+ax.imshow(img, aspect='auto', origin='upper',
+          interpolation='nearest', extent=[0, L, T_RECORD, 0])
+
+for lpos in LIGHT_POSITIONS:
+    ax.axvline(lpos, color='white', lw=0.6, linestyle='--', alpha=0.20)
+
+ax.set_xlabel('Position (cell)', color='#aab0c0', fontsize=12, labelpad=8)
+ax.set_ylabel('Time (steps — top = earliest)', color='#aab0c0', fontsize=12, labelpad=8)
+ax.set_title(
+    f'NaSch Traffic — 5 Pedestrian-Button Lights  '
+    f'(red={RED_DUR} fixed,  green~U[{GREEN_MIN},{GREEN_MAX}])',
+    color='#ffffff', fontsize=13, pad=12)
+ax.tick_params(colors='#4a5168', labelsize=10)
+
+for k, lpos in enumerate(LIGHT_POSITIONS):
+    ax.text(lpos, -T_RECORD * 0.015, f'L{k+1}',
+            color='#ffb800', fontsize=8, ha='center', va='bottom', fontweight='bold')
+
+legend_items = [
+    mpatches.Patch(color=(0.10, 1.00, 1.00), label='Fast car (v = v_max)'),
+    mpatches.Patch(color=(0.10, 0.30, 0.60), label='Slow / stopped car'),
+    mpatches.Patch(color=(0.05, 0.07, 0.10), label='Empty cell'),
+    mpatches.Patch(color=(1.00, 0.18, 0.18), label='Red light'),
+    mpatches.Patch(color=(0.18, 1.00, 0.35), label='Green light'),
+]
+ax.legend(handles=legend_items, loc='lower right', fontsize=9,
+          framealpha=0.6, facecolor='#0d1117',
+          edgecolor='#2a3040', labelcolor='#aab0c0')
+
+fig.tight_layout(pad=1.5)
+plt.savefig('pedestrian_spacetime.png', dpi=150, bbox_inches='tight', facecolor='#0d1117')
+plt.show()
