@@ -1,5 +1,8 @@
 \contentsline {section}{\numberline {1}Introduction}{3}{section.1}%
 \contentsline {subsection}{\numberline {1.1}Real-world Context}{3}{subsection.1.1}%
+\contentsline {subsection}{\numberline {1.2}Why discrete cellular automata}{3}{subsection.1.2}%
+\contentsline {subsection}{\numberline {1.3}Aims and Research Questions}{3}{subsection.1.3}%
+\contentsline {subsection}{\numberline {1.4}Structure of The Report}{3}{subsection.1.4}%
 \contentsline {section}{\numberline {2}Background}{4}{section.2}%
 \contentsline {section}{\numberline {3}Model Description and Boundary Form}{5}{section.3}%
 \contentsline {subsection}{\numberline {3.1}Model Assumptions}{5}{subsection.3.1}%

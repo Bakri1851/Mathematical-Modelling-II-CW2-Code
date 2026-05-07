@@ -3,7 +3,11 @@
     "allow": [
       "Bash(jupyter --version)",
       "Bash(PYTHONIOENCODING=utf-8 python -m nbconvert --to notebook --execute --inplace --ExecutePreprocessor.timeout=600 nasch_two_lane.ipynb)",
-      "Bash(PYTHONIOENCODING=utf-8 python -X utf8 _render_figures.py)"
+      "Bash(PYTHONIOENCODING=utf-8 python -X utf8 _render_figures.py)",
+      "Bash(cd \"c:/Users/Bakri/OneDrive - Loughborough University/Masters Year/modelling2/CW2/Mathematical Modelling II CW2 Code/Bakri/Report\" && rm -f main.aux main.bbl main.blg main.out main.toc main_sections/*.aux && ls main.* 2>/dev/null)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Bakri\\OneDrive - Loughborough University\\Masters Year\\modelling2\\CW2\\Mathematical Modelling II CW2 Code\\Bakri\\Report"
     ]
   }
 }

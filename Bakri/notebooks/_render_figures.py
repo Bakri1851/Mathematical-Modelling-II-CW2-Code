@@ -831,7 +831,8 @@ def fig_F5_single():
 
     v_free = V_MAX - P_RAND
     spacing = L / (N + 1)
-    phi_greenwave = int(round((spacing / v_free) % T_CYCLE))
+    # Correct green-wave: phi_i = -i*spacing/v_free mod T_cycle
+    phi_greenwave = int(round((-spacing / v_free) % T_CYCLE))
     phi_anti = T_CYCLE // 2
 
     fig, ax = plt.subplots()

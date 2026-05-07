@@ -18,47 +18,48 @@ A level-1 auxiliary file: main_sections/conclusion.aux
 Reallocating 'name_of_file' (item size: 1) to 7 items.
 The style file: ieeetr.bst
 Reallocating 'name_of_file' (item size: 1) to 11 items.
-I found no \citation commands---while reading file main.aux
 Database file #1: references.bib
-You've used 0 entries,
+Warning--empty journal in pishue2020INRIXGlobal
+Warning--empty year in pishue2020INRIXGlobal
+You've used 2 entries,
             1876 wiz_defined-function locations,
-            484 strings with 3700 characters,
-and the built_in function-call counts, 20 in all, are:
-= -- 0
-> -- 0
+            497 strings with 4079 characters,
+and the built_in function-call counts, 497 in all, are:
+= -- 41
+> -- 24
 < -- 0
-+ -- 0
-- -- 0
-* -- 2
-:= -- 9
-add.period$ -- 0
-call.type$ -- 0
-change.case$ -- 0
++ -- 9
+- -- 7
+* -- 42
+:= -- 82
+add.period$ -- 1
+call.type$ -- 2
+change.case$ -- 2
 chr.to.int$ -- 0
-cite$ -- 0
-duplicate$ -- 0
-empty$ -- 1
-format.name$ -- 0
-if$ -- 1
+cite$ -- 4
+duplicate$ -- 23
+empty$ -- 44
+format.name$ -- 7
+if$ -- 109
 int.to.chr$ -- 0
-int.to.str$ -- 0
-missing$ -- 0
-newline$ -- 3
-num.names$ -- 0
-pop$ -- 0
+int.to.str$ -- 2
+missing$ -- 2
+newline$ -- 9
+num.names$ -- 2
+pop$ -- 8
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 0
-skip$ -- 1
+skip$ -- 14
 stack$ -- 0
-substring$ -- 0
-swap$ -- 0
+substring$ -- 27
+swap$ -- 7
 text.length$ -- 0
 text.prefix$ -- 0
 top$ -- 0
 type$ -- 0
-warning$ -- 0
-while$ -- 0
-width$ -- 0
-write$ -- 2
-(There was 1 error message)
+warning$ -- 2
+while$ -- 5
+width$ -- 3
+write$ -- 18
+(There were 2 warnings)
