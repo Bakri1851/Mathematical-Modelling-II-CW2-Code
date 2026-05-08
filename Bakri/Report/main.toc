@@ -2,15 +2,39 @@
 \contentsline {subsection}{\numberline {1.1}Real-world Context}{3}{subsection.1.1}%
 \contentsline {subsection}{\numberline {1.2}Why discrete cellular automata}{3}{subsection.1.2}%
 \contentsline {subsection}{\numberline {1.3}Aims and Research Questions}{3}{subsection.1.3}%
-\contentsline {subsection}{\numberline {1.4}Structure of The Report}{3}{subsection.1.4}%
 \contentsline {section}{\numberline {2}Background}{4}{section.2}%
+\contentsline {subsection}{\numberline {2.1}Continuum vs Discrete Traffic Flow}{4}{subsection.2.1}%
+\contentsline {subsection}{\numberline {2.2}The NaSch cellular automaton}{4}{subsection.2.2}%
+\contentsline {subsection}{\numberline {2.3}Two-Lane Extensions}{4}{subsection.2.3}%
+\contentsline {subsection}{\numberline {2.4}Intersection Extension}{4}{subsection.2.4}%
+\contentsline {subsection}{\numberline {2.5}Optimising Signalised Systems}{4}{subsection.2.5}%
 \contentsline {section}{\numberline {3}Model Description and Boundary Form}{5}{section.3}%
 \contentsline {subsection}{\numberline {3.1}Model Assumptions}{5}{subsection.3.1}%
-\contentsline {subsection}{\numberline {3.2}Spatial Domain and Policy Setup}{5}{subsection.3.2}%
-\contentsline {section}{\numberline {4}Numerical Method and Validation}{6}{section.4}%
-\contentsline {subsection}{\numberline {4.1}Numerical Implementation}{6}{subsection.4.1}%
-\contentsline {subsection}{\numberline {4.2}Validation}{6}{subsection.4.2}%
-\contentsline {section}{\numberline {5}Baseline Results}{7}{section.5}%
-\contentsline {section}{\numberline {6}Sensitivity Analysis}{8}{section.6}%
-\contentsline {section}{\numberline {7}Conclusion}{9}{section.7}%
-\contentsline {section}{References}{10}{section*.2}%
+\contentsline {subsection}{\numberline {3.2}Model Scaling and Interpretation}{5}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Road Geometries and Light Configuration}{5}{subsection.3.3}%
+\contentsline {subsection}{\numberline {3.4}Single Lane Lattice and State}{6}{subsection.3.4}%
+\contentsline {subsection}{\numberline {3.5}NaSch Update Rules}{6}{subsection.3.5}%
+\contentsline {subsection}{\numberline {3.6}Boundary Conditions}{6}{subsection.3.6}%
+\contentsline {subsection}{\numberline {3.7}Traffic Lights as Obstacles}{6}{subsection.3.7}%
+\contentsline {subsection}{\numberline {3.8}Two-Lane Extension and The CWS Lane-Change Rule}{6}{subsection.3.8}%
+\contentsline {subsection}{\numberline {3.9}Perpendicular Intersection}{6}{subsection.3.9}%
+\contentsline {section}{\numberline {4}Numerical Method and Validation}{7}{section.4}%
+\contentsline {subsection}{\numberline {4.1}Parallel-Update Implementation}{7}{subsection.4.1}%
+\contentsline {subsection}{\numberline {4.2}Measurement Protocol}{7}{subsection.4.2}%
+\contentsline {subsection}{\numberline {4.3}Validation Gates}{7}{subsection.4.3}%
+\contentsline {subsection}{\numberline {4.4}Reproducibility}{7}{subsection.4.4}%
+\contentsline {section}{\numberline {5}Baseline Results}{8}{section.5}%
+\contentsline {subsection}{\numberline {5.1}No-Lights Baseline}{8}{subsection.5.1}%
+\contentsline {subsection}{\numberline {5.2}Single-Lane Lights}{8}{subsection.5.2}%
+\contentsline {subsection}{\numberline {5.3}Two-Lane Lights}{8}{subsection.5.3}%
+\contentsline {subsection}{\numberline {5.4}Cross-Context Synthesis}{8}{subsection.5.4}%
+\contentsline {section}{\numberline {6}Sensitivity Analysis}{9}{section.6}%
+\contentsline {subsection}{\numberline {6.1}Methodology}{9}{subsection.6.1}%
+\contentsline {subsection}{\numberline {6.2}Tornado Plot Ranking}{9}{subsection.6.2}%
+\contentsline {subsection}{\numberline {6.3}Top-3 Response Curves}{9}{subsection.6.3}%
+\contentsline {subsection}{\numberline {6.4}Joint Sweep}{9}{subsection.6.4}%
+\contentsline {subsection}{\numberline {6.5}Convergence Diagnostic}{9}{subsection.6.5}%
+\contentsline {subsection}{\numberline {6.6}Worst-Case Robustness Bound}{9}{subsection.6.6}%
+\contentsline {subsection}{\numberline {6.7}Robustness Statement}{9}{subsection.6.7}%
+\contentsline {section}{\numberline {7}Conclusion}{10}{section.7}%
+\contentsline {section}{References}{11}{section*.3}%

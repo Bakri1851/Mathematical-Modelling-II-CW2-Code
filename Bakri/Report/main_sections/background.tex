@@ -1,2 +1,35 @@
 \section{Background}
 
+\subsection{Continuum vs Discrete Traffic Flow}
+Analytical traffic models can be either continuum or discrete. Early examples of traffic flow models were based on continuum mechanics
+Continuum models treat traffic as a continuous fluid, where instead of modelling individual vehicles, the vehicle density, mean velocity and flow are all modelled as continuous functions of space and time. Lighthill and Whitham represented the road as a one-dimensional fluid with flow $q$ (vehicles per hour), concentration $k$ (vehicles per mile) and posited as the fundamental hypothesis of their theory that the flow $q$ is a function of $k$ alone \cite{lighthillKinematicWavesII1955}.
+The continuum models are useful for understanding traffic flow at a macroscopic scale,  formation of traffic jams and the effects of traffic lights but cannot capture the microscopic behaviour of individual vehicles and the interactions between them. Discrete models on the other hand address this weakness by treating everything as a finite integer such as space, time, velocity and the vehicles themselves, as we discuss next.
+
+\subsection{The NaSch cellular automaton}
+Nagel and Schreckenberg proposed a stochastic discrete cellular automaton where a road is represented as a one-dimensional lattice of cells, each of which can be occupied by a single vehicle or be empty.
+ Each vehicle carries an integer velocity $v$ in the range $\{0, 1, \ldots, v_{\max}\}$ and the system is updated in discrete time steps according to a set of rules that govern the movement of the vehicles.
+The rules are as follows:
+\begin{enumerate}
+    \item \textbf{Acceleration}: If the velocity of a vehicle is less than the maximum velocity $v_{\max}$, and if the distance to the next car is larger than $v+1$, the velocity is increased by $1$, $\left[v \rightarrow v+1\right]$.
+    \item \textbf{Deceleration}: If a vehicle at cell $i$ sees the next vehicle at cell $i+j$ (with $j \leq v$), it reduces its speed to $j-1$, i.e. $\left[v \rightarrow j-1 \right]$.
+    \item \textbf{Randomisation}: With probability $p$, the velocity of each vehicle (if greater than zero) is decreased by one $\left[v \rightarrow v - 1\right]$.
+    \item \textbf{Movement}: Each vehicle is advanced $v$ cells.
+\end{enumerate}
+Here $p$ is the probability of random deceleration, which is a key parameter that controls the behaviour of the system.
+Through the four rules above, the general properties of single lane traffic are modelled on the basis of integer valued probabilistic cellular automaton rules.
+This simple model is effective in capturing the nontrivial and realistic behaviour of traffic flow. 
+Step $3$ is particularly important for simulating realistic traffic flow, without it the dynamics is purely deterministic, and from any initial configuration the system relaxes to a stationary pattern shifted backwards one cell per timestep \cite{nagelCellularAutomatonModel1992,schreckenbergDiscreteStochasticModels1995}.
+The model also accounts for natural velocity fluctuations due to human behaviour or due to varying external conditions.
+The four steps above are unchanged across the single lane, two lane and intersection scenarios.
+
+
+\subsection{Two-Lane Extensions}
+
+Rickert et al. proposed a two-lane extension to the NaSch model, where vehicles can change lanes according to a set of rules that depend on the local traffic conditions.
+The lane-change sub-step before the NaSch update with both sub-steps running at the start of each time step. The lane-change rules are as follows \cite{rickertTwoLaneTraffic1996}.
+Chowdhury et al. further extended this to include two different types of vehicles, slow (e.g. a truck) and fast (e.g. a car) \cite{chowdhuryParticleHoppingModels1997}. 
+
+\subsection{Intersection Extension}
+
+\subsection{Optimising Signalised Systems}
+

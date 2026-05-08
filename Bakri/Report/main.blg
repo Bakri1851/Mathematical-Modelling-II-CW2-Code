@@ -21,45 +21,46 @@ Reallocating 'name_of_file' (item size: 1) to 11 items.
 Database file #1: references.bib
 Warning--empty journal in pishue2020INRIXGlobal
 Warning--empty year in pishue2020INRIXGlobal
-You've used 2 entries,
+Warning--empty journal in foulaadvandVehicularTrafficFlow2011
+You've used 9 entries,
             1876 wiz_defined-function locations,
-            497 strings with 4079 characters,
-and the built_in function-call counts, 497 in all, are:
-= -- 41
-> -- 24
+            552 strings with 5709 characters,
+and the built_in function-call counts, 2809 in all, are:
+= -- 291
+> -- 98
 < -- 0
-+ -- 9
-- -- 7
-* -- 42
-:= -- 82
-add.period$ -- 1
-call.type$ -- 2
-change.case$ -- 2
++ -- 36
+- -- 27
+* -- 212
+:= -- 387
+add.period$ -- 8
+call.type$ -- 9
+change.case$ -- 9
 chr.to.int$ -- 0
-cite$ -- 4
-duplicate$ -- 23
-empty$ -- 44
-format.name$ -- 7
-if$ -- 109
+cite$ -- 12
+duplicate$ -- 136
+empty$ -- 241
+format.name$ -- 27
+if$ -- 675
 int.to.chr$ -- 0
-int.to.str$ -- 2
-missing$ -- 2
-newline$ -- 9
-num.names$ -- 2
-pop$ -- 8
+int.to.str$ -- 9
+missing$ -- 9
+newline$ -- 30
+num.names$ -- 9
+pop$ -- 20
 preamble$ -- 1
 purify$ -- 0
 quote$ -- 0
-skip$ -- 14
+skip$ -- 120
 stack$ -- 0
-substring$ -- 27
-swap$ -- 7
+substring$ -- 247
+swap$ -- 69
 text.length$ -- 0
 text.prefix$ -- 0
 top$ -- 0
 type$ -- 0
-warning$ -- 2
-while$ -- 5
-width$ -- 3
-write$ -- 18
-(There were 2 warnings)
+warning$ -- 3
+while$ -- 29
+width$ -- 10
+write$ -- 85
+(There were 3 warnings)
