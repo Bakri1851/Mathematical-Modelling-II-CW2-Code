@@ -6,18 +6,16 @@
 \contentsline {subsection}{\numberline {2.1}Continuum vs Discrete Traffic Flow}{5}{subsection.2.1}%
 \contentsline {subsection}{\numberline {2.2}The NaSch cellular automaton}{5}{subsection.2.2}%
 \contentsline {subsection}{\numberline {2.3}Two-Lane Extensions}{5}{subsection.2.3}%
-\contentsline {subsection}{\numberline {2.4}Intersection Extension}{5}{subsection.2.4}%
-\contentsline {subsection}{\numberline {2.5}Optimising Signalised Systems}{5}{subsection.2.5}%
-\contentsline {section}{\numberline {3}Model Description and Boundary Form}{6}{section.3}%
-\contentsline {subsection}{\numberline {3.1}Model Assumptions}{6}{subsection.3.1}%
-\contentsline {subsection}{\numberline {3.2}Model Scaling and Interpretation}{6}{subsection.3.2}%
-\contentsline {subsection}{\numberline {3.3}Road Geometries and Light Configuration}{6}{subsection.3.3}%
+\contentsline {subsection}{\numberline {2.4}Optimising Signalised Systems}{6}{subsection.2.4}%
+\contentsline {section}{\numberline {3}Model Description and Boundary Form}{7}{section.3}%
+\contentsline {subsection}{\numberline {3.1}Model Assumptions}{7}{subsection.3.1}%
+\contentsline {subsection}{\numberline {3.2}Model Scaling and Interpretation}{7}{subsection.3.2}%
+\contentsline {subsection}{\numberline {3.3}Road Geometries and Light Configuration}{7}{subsection.3.3}%
 \contentsline {subsection}{\numberline {3.4}Single Lane Lattice and State}{7}{subsection.3.4}%
 \contentsline {subsection}{\numberline {3.5}NaSch Update Rules}{7}{subsection.3.5}%
 \contentsline {subsection}{\numberline {3.6}Boundary Conditions}{7}{subsection.3.6}%
 \contentsline {subsection}{\numberline {3.7}Traffic Lights as Obstacles}{7}{subsection.3.7}%
 \contentsline {subsection}{\numberline {3.8}Two-Lane Extension and The CWS Lane-Change Rule}{7}{subsection.3.8}%
-\contentsline {subsection}{\numberline {3.9}Perpendicular Intersection}{7}{subsection.3.9}%
 \contentsline {section}{\numberline {4}Numerical Method and Validation}{8}{section.4}%
 \contentsline {subsection}{\numberline {4.1}Parallel-Update Implementation}{8}{subsection.4.1}%
 \contentsline {subsection}{\numberline {4.2}Measurement Protocol}{8}{subsection.4.2}%

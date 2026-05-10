@@ -1,15 +1,15 @@
 \section{Background}
 
 \subsection{Continuum vs Discrete Traffic Flow}
-Analytical traffic models can be either continuum or discrete. Early examples of traffic flow models were based on continuum mechanics
+Analytical traffic models can be either continuum or discrete. Early examples of traffic flow models were based on continuum mechanics.
 Continuum models treat traffic as a continuous fluid, where instead of modelling individual vehicles, the vehicle density, mean velocity and flow are all modelled as continuous functions of space and time. Lighthill and Whitham represented the road as a one-dimensional fluid with flow $q$ (vehicles per hour), concentration $k$ (vehicles per mile) and posited as the fundamental hypothesis of their theory that the flow $q$ is a function of $k$ alone \cite{lighthillKinematicWavesII1955}.
 The continuum models are useful for understanding traffic flow at a macroscopic scale,  formation of traffic jams and the effects of traffic lights but cannot capture the microscopic behaviour of individual vehicles and the interactions between them. Discrete models on the other hand address this weakness by treating everything as a finite integer such as space, time, velocity and the vehicles themselves, as we discuss next.
 
-\subsection{The NaSch cellular automaton}
+\subsection{The NaSch cellular automaton} \label{sec: Nasch}
 Nagel and Schreckenberg proposed a stochastic discrete cellular automaton where a road is represented as a one-dimensional lattice of cells, each of which can be occupied by a single vehicle or be empty.
  Each vehicle carries an integer velocity $v$ in the range $\{0, 1, \ldots, v_{\max}\}$ and the system is updated in discrete time steps according to a set of rules that govern the movement of the vehicles.
 The rules are as follows:
-\begin{enumerate}
+\begin{enumerate} 
     \item \textbf{Acceleration}: If the velocity of a vehicle is less than the maximum velocity $v_{\max}$, and if the distance to the next car is larger than $v+1$, the velocity is increased by $1$, $\left[v \rightarrow v+1\right]$.
     \item \textbf{Deceleration}: If a vehicle at cell $i$ sees the next vehicle at cell $i+j$ (with $j \leq v$), it reduces its speed to $j-1$, i.e. $\left[v \rightarrow j-1 \right]$.
     \item \textbf{Randomisation}: With probability $p$, the velocity of each vehicle (if greater than zero) is decreased by one $\left[v \rightarrow v - 1\right]$.
@@ -20,16 +20,44 @@ Through the four rules above, the general properties of single lane traffic are 
 This simple model is effective in capturing the nontrivial and realistic behaviour of traffic flow. 
 Step $3$ is particularly important for simulating realistic traffic flow, without it the dynamics is purely deterministic, and from any initial configuration the system relaxes to a stationary pattern shifted backwards one cell per timestep \cite{nagelCellularAutomatonModel1992,schreckenbergDiscreteStochasticModels1995}.
 The model also accounts for natural velocity fluctuations due to human behaviour or due to varying external conditions.
-The four steps above are unchanged across the single lane, two lane and intersection scenarios.
+The four steps above are unchanged across the single lane and two lane scenarios.
 
 
 \subsection{Two-Lane Extensions}
 
 Rickert et al. proposed a two-lane extension to the NaSch model, where vehicles can change lanes according to a set of rules that depend on the local traffic conditions.
-The lane-change sub-step before the NaSch update with both sub-steps running at the start of each time step. The lane-change rules are as follows \cite{rickertTwoLaneTraffic1996}.
-Chowdhury et al. further extended this to include two different types of vehicles, slow (e.g. a truck) and fast (e.g. a car) \cite{chowdhuryParticleHoppingModels1997}. 
+The lane-change sub-step runs before the NaSch update, with both sub-steps applied as a strict parallel update against the configuration at the start of each time step \cite{rickertTwoLaneTraffic1996}.
 
-\subsection{Intersection Extension}
+Chowdhury et al. extended Rickert's work to include two different types of vehicles, slow (e.g. a truck) and fast (e.g. a car), and proposed two variants of the lane change rule: a \textit{symmetric} variant in which the same rules apply for both lanes, and an \textit{asymmetric} variant modelled after the German Autobahn convention where the right (slow) lane is preferred and the left (fast) lane is used for overtaking only \cite{chowdhuryParticleHoppingModels1997}.
+In this report we will explore both variants of the lane change rule.
+
+
+For the symmetric version, the rules for the parallel updating of the speeds and positions of the vehicles are as follows: first, each vehicle is considered for the possibility of a lane changing and if the rules allow the lane change, the changes are implemented; second the speed and position of each vehicle is updated following the rules for the forward movement in the current lane. A vehicle changes lane with probability $p_{lc}$ provided:
+\begin{enumerate}
+    \item the gap in front in the current lane is less than $v + 1$
+    \item the gap in front in the other lane is larger than the gap available in front in the current lane
+    \item the nearest-neighbour site in the other lane is empty
+    \item the maximum possible speed of the vehicle behind in the other lane is smaller than the gap in between 
+\end{enumerate}
+
+In the asymmetric version, the change from the slow lane to the fast lane uses the four conditions of the symmetric version, but the change from the fast lane back to the slow lane is weaker: a vehicle returns to the slow lane as long as conditions (3) and (4) above are satisfied and the slow-lane gap is sufficient, without requiring (1) and (2) to be satisfied.
+
+The rules for updating the speeds and positions of the vehicles in the current lane are identical to those in the NaSch single lane model in Section \ref{sec: Nasch} \cite{chowdhuryParticleHoppingModels1997}. Lane-changing alters the design space for light optimisation, since cars can route around a queue at one light by switching lane.
+
+% \subsection{Intersection Extension}
 
 \subsection{Optimising Signalised Systems}
+
+Traffic lights are a common feature of urban traffic networks, and their timing can have a significant impact on traffic flow and congestion.
+Brockfeld et al. combined the basic ideas of the Biham-Middleton-Levine (BML) model for city traffic with the NaSch model for highway traffic to create a square lattice geometry \cite{brockfeldOptimizingTrafficLights2001}.
+In this model, each cell can be occupied by a vehicle moving in one of two directions, and the traffic lights at the intersections control the flow of vehicles through the lattice.
+In this paper various strategies for optimising the traffic light timings are explored:
+
+\begin{enumerate}
+ \item \textbf{Synchronised traffic lights }- all lights switch simultaneously, producing strong throughput oscillations as the cycle length is varied.
+ \item \textbf{Green wave strategy }- the phase offset between successive lights is set so that a vehicle cruising at the free flow speed $v_{\text{free}} = v_{\max}p$ arrives at each light just as it turns green, allowing it to pass through multiple lights without stopping.
+ \item \textbf{Random offset strategy }- each light's offset parameter is chosen from a uniform distribution over the interval $\{0,\dots,2T\}$
+\end{enumerate}
+Green wave gives much improvement to the flow of traffic in comparison to the synchronised strategy.
+Random offset outperforms the synchronised strategy at low densities for small cycle times, and at high densities for all cycle times \cite{brockfeldOptimizingTrafficLights2001}.
 

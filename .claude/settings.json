@@ -13,7 +13,10 @@
       "WebFetch(domain:courses.physics.ucsd.edu)",
       "WebFetch(domain:hal.science)",
       "WebFetch(domain:journals.aps.org)",
-      "WebFetch(domain:pdf.sciencedirectassets.com)"
+      "WebFetch(domain:pdf.sciencedirectassets.com)",
+      "PowerShell(python --version)",
+      "PowerShell(python -c \"import nbconvert; print\\(nbconvert.__version__\\)\" 2>&1)",
+      "Bash(awk 'END{print NR}' \"Bakri/Report/references.bib\")"
     ],
     "additionalDirectories": [
       "c:\\Users\\Bakri\\OneDrive - Loughborough University\\Masters Year\\modelling2\\CW2\\Mathematical Modelling II CW2 Code\\Bakri\\Report"

@@ -28,10 +28,6 @@ D.~Chowdhury, D.~E. Wolf, and M.~Schreckenberg, ``Particle hopping models for
   rules,'' {\em Physica A: Statistical Mechanics and its Applications},
   vol.~235, pp.~417--439, Feb. 1997.
 
-\bibitem{foulaadvandVehicularTrafficFlow2011}
-M.~E. Foulaadvand and S.~Belbasi, ``Vehicular traffic flow at an intersection
-  with the possibility of turning,'' 2011.
-
 \bibitem{lighthillKinematicWavesII1955}
 M.~J. Lighthill and G.~B. Whitham, ``On kinematic waves {{II}}. {{A}} theory of
   traffic flow on long crowded roads,'' {\em Proceedings of the Royal Society
@@ -42,5 +38,10 @@ M.~J. Lighthill and G.~B. Whitham, ``On kinematic waves {{II}}. {{A}} theory of
 M.~Schreckenberg, A.~Schadschneider, K.~Nagel, and N.~Ito, ``Discrete
   stochastic models for traffic flow,'' {\em Physical Review E}, vol.~51,
   pp.~2939--2949, Apr. 1995.
+
+\bibitem{brockfeldOptimizingTrafficLights2001}
+E.~Brockfeld, R.~Barlovic, A.~Schadschneider, and M.~Schreckenberg,
+  ``Optimizing traffic lights in a cellular automaton model for city traffic,''
+  {\em Physical Review E}, vol.~64, p.~056132, Oct. 2001.
 
 \end{thebibliography}
